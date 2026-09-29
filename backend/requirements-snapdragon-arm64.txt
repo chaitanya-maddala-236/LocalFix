@@ -1,0 +1,5 @@
+-r requirements-common.txt
+# Native Windows on Snapdragon / ONNX Runtime QNN EP prerequisites:
+# Python 3.11.x ARM64; NumPy 1.25.2 or >=1.26.4.
+numpy==1.26.4
+onnxruntime-qnn

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "models": {
+    "vision": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"},
+    "ocr": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"},
+    "speech": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"},
+    "reasoning": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"},
+    "embedding": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"}
+  },
+  "note": "Add user-supplied, licensed ONNX model paths and precision only after validating model inputs and outputs. No models are bundled or silently downloaded."
+}

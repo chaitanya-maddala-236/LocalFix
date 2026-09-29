@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" role="img" aria-labelledby="title desc">
+  <title id="title">Synthetic DemoTech ACM-4200 industrial motor controller</title>
+  <desc id="desc">Original fictional cabinet illustration with control display, motor relay, fuse, connector, control board, and model label.</desc>
+  <defs>
+    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#252d27"/><stop offset="1" stop-color="#121713"/></linearGradient>
+    <linearGradient id="case" x2="1"><stop stop-color="#48504d"/><stop offset=".55" stop-color="#292f2d"/><stop offset="1" stop-color="#1b201e"/></linearGradient>
+    <linearGradient id="panel" x2="0" y2="1"><stop stop-color="#202725"/><stop offset="1" stop-color="#0e1311"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0v36" fill="none" stroke="#d6e5ce" stroke-opacity=".035"/></pattern>
+    <filter id="blur"><feGaussianBlur stdDeviation="22"/></filter>
+  </defs>
+  <rect width="1280" height="800" fill="url(#bg)"/><rect width="1280" height="800" fill="url(#grid)"/>
+  <ellipse cx="646" cy="716" rx="330" ry="38" fill="#000" opacity=".6" filter="url(#blur)"/>
+  <g transform="translate(370 70)">
+    <path d="M58 20h450l42 31v555l-33 31H46l-29-30V55z" fill="url(#case)" stroke="#89918c" stroke-opacity=".56" stroke-width="3"/>
+    <path d="M54 39h425v541H54z" fill="#272e2c" stroke="#707976" stroke-opacity=".5" stroke-width="2"/>
+    <path d="M54 39h425v541H54z" fill="url(#grid)" opacity=".75"/>
+    <path d="M479 39l51 18v519l-51 4z" fill="#1d2321" stroke="#707976" stroke-opacity=".5" stroke-width="2"/>
+    <path d="M495 85v406" stroke="#111614" stroke-width="8"/><circle cx="499" cy="291" r="10" fill="#88918d"/><circle cx="499" cy="291" r="4" fill="#171c1a"/>
+    <rect x="100" y="80" width="264" height="150" rx="9" fill="url(#panel)" stroke="#828b85" stroke-opacity=".75" stroke-width="2"/>
+    <rect x="126" y="106" width="112" height="67" rx="4" fill="#070b09" stroke="#4d5851" stroke-width="2"/>
+    <text x="182" y="151" text-anchor="middle" fill="#f0b969" font-family="monospace" font-size="36" letter-spacing="6">E07</text>
+    <circle cx="281" cy="119" r="9" fill="#b45940"/><circle cx="314" cy="119" r="9" fill="#c8f169"/>
+    <text x="281" y="145" text-anchor="middle" fill="#bbc2bc" font-family="monospace" font-size="9">FAULT</text><text x="314" y="145" text-anchor="middle" fill="#bbc2bc" font-family="monospace" font-size="9">RUN</text>
+    <text x="126" y="207" fill="#a9b2ac" font-family="monospace" font-size="10" letter-spacing="2">DEMOTECH  /  ACM-4200</text>
+    <rect x="104" y="271" width="260" height="208" rx="6" fill="#202725" stroke="#68726c" stroke-width="2"/>
+    <rect x="128" y="296" width="96" height="98" rx="4" fill="#343d38" stroke="#718077" stroke-width="2"/>
+    <rect x="248" y="294" width="91" height="79" rx="8" fill="#121917" stroke="#78837d" stroke-width="3"/><rect x="260" y="307" width="67" height="50" rx="5" fill="#2a332f" stroke="#536159"/>
+    <text x="294" y="339" text-anchor="middle" fill="#c8f169" font-family="monospace" font-size="15">K2</text><circle cx="294" cy="352" r="3" fill="#c8f169"/>
+    <rect x="243" y="411" width="100" height="39" rx="4" fill="#121816" stroke="#89938d" stroke-width="2"/><path d="M259 412v37m16-37v37m16-37v37m16-37v37m16-37v37" stroke="#a5ada7" stroke-width="5"/>
+    <rect x="128" y="416" width="53" height="40" rx="4" fill="#121816" stroke="#89938d" stroke-width="2"/><path d="M142 425v22m13-22v22m13-22v22" stroke="#d3b16e" stroke-width="5"/>
+    <rect x="391" y="88" width="74" height="87" rx="4" fill="#262e2a" stroke="#838d87" stroke-width="2"/><text x="428" y="111" text-anchor="middle" fill="#c0c8c2" font-family="monospace" font-size="9">IDENTIFICATION</text><text x="428" y="136" text-anchor="middle" fill="#e7ece8" font-family="monospace" font-size="13">ACM-4200</text><text x="428" y="157" text-anchor="middle" fill="#9da7a0" font-family="monospace" font-size="10">SN-823919</text>
+    <rect x="394" y="270" width="62" height="115" rx="5" fill="#2d3531" stroke="#76817a" stroke-width="2"/><path d="M407 291h36m-36 18h36m-36 18h36m-36 18h36m-36 18h36" stroke="#828c86" stroke-width="5"/>
+    <text x="55" y="625" fill="#aab6a9" font-family="monospace" font-size="10" letter-spacing="2">DEMO EQUIPMENT · SYNTHETIC TRAINING ART</text>
+    <path d="M48 647h481m-454 0v18m427-18v18" stroke="#79847d" stroke-width="7"/>
+  </g>
+</svg>

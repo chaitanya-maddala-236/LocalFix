@@ -1,0 +1,18 @@
+{
+  "dataset": "LocalFix ACM-4200 synthetic demo set",
+  "license": "Original project-created vector artwork; CC0-style project asset, no external source material",
+  "image": "images/acm4200_synthetic.svg",
+  "format": "xyxy_pixel_normalized_0_1",
+  "image_size": [1280, 800],
+  "classes": ["motor_relay", "fuse", "connector", "control_board", "display", "warning_label", "model_label"],
+  "annotations": [
+    {"class": "display", "box": [0.29, 0.18, 0.53, 0.37]},
+    {"class": "motor_relay", "box": [0.56, 0.47, 0.68, 0.60]},
+    {"class": "connector", "box": [0.55, 0.65, 0.67, 0.72]},
+    {"class": "fuse", "box": [0.37, 0.65, 0.43, 0.73]},
+    {"class": "control_board", "box": [0.29, 0.43, 0.53, 0.77]},
+    {"class": "model_label", "box": [0.66, 0.17, 0.76, 0.29]},
+    {"class": "warning_label", "box": [0.67, 0.43, 0.75, 0.58]}
+  ],
+  "notes": "Boxes are illustrative labels on the synthetic product artwork, not trained detector annotations. Real model training requires validated, consented sample images."
+}
