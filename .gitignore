@@ -5,6 +5,8 @@ __pycache__/
 .pytest_cache/
 .venv/
 .venv-snapdragon/
+.venv-aihub/
+.tmp-aihub/
 data/localfix.sqlite3
 data/localfix.sqlite3-shm
 data/localfix.sqlite3-wal

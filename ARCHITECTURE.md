@@ -10,16 +10,18 @@ flowchart LR
   UI --> Camera[Webcam / imported image]
   API --> Runtime[LocalInferenceEngine]
   Runtime --> Registry[ModelRegistry]
-  Registry --> QNN[ONNX Runtime QNN EP / QAIRT adapter]
+  Registry --> QNN[ONNX Runtime QNN EP]
   Registry --> CPU[ONNX Runtime CPU fallback]
   API --> Services[Vision · OCR · Speech · Retrieval · Reasoning]
+  Services --> VLM[Multimodal VLM adapter]
+  VLM --> GenieX[GenieX loopback API / QAIRT]
   Services --> Safety[Evidence validator + Safety Gate]
   Services --> DB[(SQLite + FTS5]
   Services --> Files[Controlled local data directory]
   API --> Cases[Cases + report renderer]
 ```
 
-The browser is a presentation client. The backend owns local data, retrieval, inference adapter selection, safety validation, case persistence, and telemetry. All API calls bind to loopback by default. There is no cloud inference path in the MVP.
+The browser is a presentation client. The backend owns local data, retrieval, inference adapter selection, safety validation, case persistence, and telemetry. All inference APIs bind to loopback by default. Qualcomm AI Hub Workbench is an optional model-development/profile service; its credential is never stored in the app and it is not an inference dependency.
 
 ## 2. Folder structure
 
@@ -155,8 +157,8 @@ Camera/audio input → explicit demo or actual local adapter route → OCR/detec
 
 ## 9. Deployment strategy
 
-Development runs Vite and FastAPI as separate local processes. The current AMD64 profile runs RapidOCR PP-OCRv6, faster-whisper tiny.en, BGE-small embeddings, and Qwen3-VL 2B Instruct locally; OCR/ASR/retrieval are CPU-backed and the Ollama VLM accelerator is not reported as QNN. A YOLOv8 task decoder exists but has no detector weights. The build host has not validated QNN on the HP Snapdragon. QNN is selected only when a configured model session reports the provider; CPU fallback is explicit. OWL-V2, QAIRT, and GenieX integrations remain unavailable without model-specific assets and runtime bindings.
+Development runs Vite and FastAPI as separate local processes. The current AMD64 profile runs RapidOCR PP-OCRv6, faster-whisper tiny.en, BGE-small embeddings, and Qwen3-VL 2B Instruct locally; OCR/ASR/retrieval are CPU-backed and the Ollama VLM accelerator is not reported as QNN. A YOLOv8 task decoder exists but has no detector weights. The build host has not validated NPU execution on the HP Snapdragon. QNN is reported active only when a configured ONNX Runtime session reports the provider. The optional Windows ARM64 profile adds a GenieX OpenAI-compatible loopback adapter and a launcher configured for Qualcomm AI Engine Direct/NPU. GenieX's server currently does not expose accelerator telemetry to LocalFix, so its NPU status remains unverified even after the first response; compare and benchmark on the physical target before making a hardware claim.
 
 ## 10. Benchmark strategy
 
-The benchmark runs ten real serial task operations for available local OCR, ASR (with selected audio), vision (with selected image and configured detector), and retrieval stages. It reports raw samples and mean/median/p95/min/max, with model/provider, adapter load and warmup telemetry, RAM, and network-request count. A deterministic synthetic label supports OCR latency checks only and is not an accuracy claim. Generic zero-tensor ONNX smoke runs remain ineligible for performance claims. The Windows AMD64 build host cannot make Snapdragon NPU-versus-CPU claims; compare equivalent models and inputs on the target only.
+The benchmark runs ten real serial task operations for available local OCR, ASR (with selected audio), vision (with selected image and configured detector), and retrieval stages. It reports raw samples and mean/median/p95/min/max, with model/provider, adapter load and warmup telemetry, RAM, and network-request count. A deterministic synthetic label supports OCR latency checks only and is not an accuracy claim. Generic zero-tensor ONNX smoke runs remain ineligible for performance claims. GenieX VLM timing is measured as an end-to-end loopback response; the app does not infer NPU placement from the model name or target profile. The Windows AMD64 build host cannot make Snapdragon NPU-versus-CPU claims; compare equivalent models and inputs on the target only.

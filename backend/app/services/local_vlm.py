@@ -88,11 +88,12 @@ def validate_component_location(payload: Any) -> tuple[float, float, float, floa
 
 
 class LocalVLMEngine:
-    """Loopback-only Ollama adapter for optional local multimodal reasoning."""
+    """Loopback-only Ollama or GenieX adapter for local multimodal reasoning."""
 
     def __init__(self, model: str = "qwen3-vl:2b-instruct-q4_K_M", base_url: str = "http://127.0.0.1:11434") -> None:
         self.model_name = ""
         self.base_url = ""
+        self.provider = "ollama"
         self.state = "NOT_INSTALLED"
         self.error: str | None = None
         self.last_latency_ms: float | None = None
@@ -108,7 +109,11 @@ class LocalVLMEngine:
 
     def configure(self, model: str, base_url: str) -> None:
         self.model_name = os.getenv("LOCALFIX_VLM_MODEL", model).strip()
-        self.base_url = os.getenv("LOCALFIX_VLM_URL", base_url).rstrip("/")
+        self.provider = os.getenv("LOCALFIX_VLM_PROVIDER", "ollama").strip().casefold()
+        if self.provider not in {"ollama", "geniex"}:
+            raise ValueError("LocalFix VLM provider must be ollama or geniex.")
+        default_url = "http://127.0.0.1:18181" if self.provider == "geniex" else base_url
+        self.base_url = os.getenv("LOCALFIX_VLM_URL", default_url).rstrip("/")
         self._assert_loopback()
         self._last_health_check = 0.0
         self.state = "NOT_INSTALLED"
@@ -119,8 +124,104 @@ class LocalVLMEngine:
         parsed = urlparse(self.base_url)
         if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
             raise ValueError("LocalFix VLM endpoint must use HTTP loopback only; remote endpoints are not permitted.")
-        if parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
-            raise ValueError("LocalFix VLM endpoint must be a loopback origin without a path or query.")
+        allowed_paths = {"", "/", "/v1"} if self.provider == "geniex" else {"", "/"}
+        if parsed.path not in allowed_paths or parsed.query or parsed.fragment:
+            raise ValueError("LocalFix VLM endpoint must be a supported loopback URL without a query.")
+
+    def _api_url(self, endpoint: str) -> str:
+        path = urlparse(self.base_url).path.rstrip("/")
+        origin = f"{urlparse(self.base_url).scheme}://{urlparse(self.base_url).netloc}"
+        if self.provider == "geniex":
+            prefix = path or "/v1"
+            return f"{origin}{prefix}/{endpoint}"
+        return f"{origin}/api/{endpoint}"
+
+    def _chat(self, system: str, prompt: str, image_bytes: bytes | None, mime_type: str,
+              max_tokens: int) -> dict[str, Any]:
+        if self.provider == "geniex":
+            content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+            if image_bytes:
+                encoded = base64.b64encode(image_bytes).decode("ascii")
+                content.append({"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}})
+            body = {
+                "model": self.model_name,
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": content}],
+                "temperature": 0, "max_tokens": max_tokens, "stream": True, "enable_think": False,
+            }
+        else:
+            user: dict[str, Any] = {"role": "user", "content": prompt}
+            if image_bytes:
+                user["images"] = [base64.b64encode(image_bytes).decode("ascii")]
+            body = {
+                "model": self.model_name,
+                "messages": [{"role": "system", "content": system}, user],
+                "format": "json", "stream": True, "think": False, "keep_alive": "10m",
+                "options": {"temperature": 0, "num_predict": max_tokens, "num_ctx": 4096},
+            }
+
+        started = time.perf_counter()
+        first_token_ms: float | None = None
+        chunks: list[str] = []
+        result: dict[str, Any] = {}
+        try:
+            with self._inference_lock:
+                with httpx.stream("POST", self._api_url("chat/completions" if self.provider == "geniex" else "chat"),
+                                  json=body, timeout=httpx.Timeout(180.0, connect=2.0), trust_env=False) as response:
+                    response.raise_for_status()
+                    for line in response.iter_lines():
+                        if not line:
+                            continue
+                        if self.provider == "geniex":
+                            if not line.startswith("data:"):
+                                continue
+                            payload = line[5:].strip()
+                            if payload == "[DONE]":
+                                break
+                            event = json.loads(payload)
+                            if event.get("error"):
+                                raise ValueError("Local VLM stream returned an error.")
+                            choices = event.get("choices", [])
+                            delta = choices[0].get("delta", {}) if choices else {}
+                            text = delta.get("content", "") if isinstance(delta, dict) else ""
+                            if isinstance(text, list):
+                                text = "".join(part.get("text", "") for part in text if isinstance(part, dict))
+                            if text:
+                                chunks.append(str(text))
+                                if first_token_ms is None:
+                                    first_token_ms = round((time.perf_counter() - started) * 1000, 3)
+                            if event.get("usage"):
+                                result["usage"] = event["usage"]
+                            result["model"] = event.get("model", self.model_name)
+                        else:
+                            event = json.loads(line)
+                            if event.get("error"):
+                                raise ValueError("Local VLM stream returned an error.")
+                            text = event.get("message", {}).get("content", "")
+                            if text:
+                                chunks.append(str(text))
+                                if first_token_ms is None:
+                                    first_token_ms = round((time.perf_counter() - started) * 1000, 3)
+                            if event.get("done"):
+                                result = event
+        except (httpx.HTTPError, ValueError, json.JSONDecodeError, TypeError) as error:
+            self.state = "SERVICE_UNAVAILABLE" if isinstance(error, httpx.ConnectError) else "ERROR"
+            self.error = f"{type(error).__name__}: Local VLM inference failed."
+            raise ModelUnavailableError("Local VLM inference failed. No remote service was used.") from error
+
+        elapsed = round((time.perf_counter() - started) * 1000, 3)
+        result["content"] = "".join(chunks)
+        result["latency_ms"] = elapsed
+        result["first_token_ms"] = first_token_ms
+        usage = result.get("usage") or {}
+        completion_tokens = usage.get("completion_tokens")
+        generation_seconds = (elapsed - first_token_ms) / 1000 if first_token_ms is not None else 0
+        result["tokens_per_second"] = (
+            round(float(completion_tokens) / generation_seconds, 3)
+            if completion_tokens and generation_seconds > 0 else None
+        )
+        load_duration = result.get("load_duration")
+        result["load_ms"] = round(float(load_duration) / 1_000_000, 3) if load_duration is not None else None
+        return result
 
     def load(self) -> dict[str, Any]:
         with self._health_lock:
@@ -130,21 +231,32 @@ class LocalVLMEngine:
             self._last_health_check = now
             started = time.perf_counter()
             try:
-                response = httpx.get(f"{self.base_url}/api/tags", timeout=1.5, trust_env=False)
+                endpoint = self._api_url("models" if self.provider == "geniex" else "tags")
+                response = httpx.get(endpoint, timeout=1.5, trust_env=False)
                 response.raise_for_status()
-                tags = response.json().get("models", [])
-                matching = next((item for item in tags if isinstance(item, dict)
-                                 and str(item.get("name", "")) == self.model_name), None)
+                if self.provider == "geniex":
+                    models = response.json().get("data", [])
+                    model_ids = [str(item.get("id", "")) for item in models if isinstance(item, dict)]
+                    configured_key = self.model_name.rsplit("/", 1)[-1].split(":", 1)[0].casefold()
+                    matching = next((item for item in model_ids
+                                     if item.rsplit("/", 1)[-1].split(":", 1)[0].casefold() == configured_key), None)
+                    if matching:
+                        self.precision = matching.rsplit(":", 1)[1] if ":" in matching else None
+                else:
+                    tags = response.json().get("models", [])
+                    matching = next((item for item in tags if isinstance(item, dict)
+                                     and str(item.get("name", "")) == self.model_name), None)
+                    if matching:
+                        self.precision = (matching.get("details") or {}).get("quantization_level")
                 if matching:
                     self.state = "READY"
                     self.error = None
-                    self.precision = (matching.get("details") or {}).get("quantization_level")
                 else:
                     self.state = "MODEL_REQUIRED"
                     self.error = None
             except (httpx.HTTPError, ValueError) as error:
                 self.state = "SERVICE_UNAVAILABLE"
-                self.error = f"{type(error).__name__}: Local Ollama service is unavailable on loopback."
+                self.error = f"{type(error).__name__}: Local {self.provider} service is unavailable on loopback."
             self.load_ms = round((time.perf_counter() - started) * 1000, 3)
             return self.health()
 
@@ -171,67 +283,23 @@ class LocalVLMEngine:
             "Never infer electrical steps, safety state, measurements, repair actions, or causes absent from the manual. "
             "Do not claim calibrated confidence."
         )
-        message: dict[str, Any] = {"role": "user", "content": "\n\n".join(prompt_parts)}
-        if image_bytes:
-            message["images"] = [base64.b64encode(image_bytes).decode("ascii")]
-        body = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "system", "content": "You are a local industrial field assistant. Follow the required JSON format and conservative grounding rules."},
-                message,
-            ],
-            "format": "json",
-            "stream": True,
-            "think": False,
-            "keep_alive": "10m",
-            "options": {"temperature": 0, "num_predict": 160, "num_ctx": 4096},
-        }
-        started = time.perf_counter()
-        with self._inference_lock:
-            try:
-                chunks: list[str] = []
-                result: dict[str, Any] = {}
-                first_token_ms: float | None = None
-                with httpx.stream("POST", f"{self.base_url}/api/chat", json=body,
-                                  timeout=httpx.Timeout(180.0, connect=2.0), trust_env=False) as response:
-                    response.raise_for_status()
-                    for line in response.iter_lines():
-                        if not line:
-                            continue
-                        event = json.loads(line)
-                        if event.get("error"):
-                            raise ValueError("Local VLM stream returned an error.")
-                        content_chunk = event.get("message", {}).get("content", "")
-                        if content_chunk:
-                            chunks.append(str(content_chunk))
-                            if first_token_ms is None:
-                                first_token_ms = round((time.perf_counter() - started) * 1000, 3)
-                        if event.get("done"):
-                            result = event
-                final_message = result.get("message", {})
-                content = "".join(chunks) if chunks else str(final_message.get("content", ""))
-                result["message"] = {**final_message, "content": content}
-            except (httpx.HTTPError, ValueError) as error:
-                self.state = "SERVICE_UNAVAILABLE" if isinstance(error, httpx.ConnectError) else "ERROR"
-                self.error = f"{type(error).__name__}: Local VLM inference failed."
-                raise ModelUnavailableError("Local VLM inference failed. No remote service was used.") from error
-        elapsed = round((time.perf_counter() - started) * 1000, 3)
-        content = result.get("message", {}).get("content", "")
+        result = self._chat(
+            "You are a local industrial field assistant. Follow the required JSON format and conservative grounding rules.",
+            "\n\n".join(prompt_parts), image_bytes, mime_type, 160,
+        )
+        content = result.get("content", "")
         try:
             decoded = json.loads(content)
         except (json.JSONDecodeError, TypeError):
             decoded = None
-        self.last_latency_ms = elapsed
-        self.last_first_token_ms = first_token_ms
-        eval_count = result.get("eval_count")
-        eval_duration = result.get("eval_duration")
-        self.last_tokens_per_second = round(float(eval_count) / (float(eval_duration) / 1_000_000_000), 3) if eval_count and eval_duration else None
-        load_duration = result.get("load_duration")
-        self.last_model_load_ms = round(float(load_duration) / 1_000_000, 3) if load_duration else 0.0
+        self.last_latency_ms = result["latency_ms"]
+        self.last_first_token_ms = result["first_token_ms"]
+        self.last_tokens_per_second = result["tokens_per_second"]
+        self.last_model_load_ms = result["load_ms"]
         return {
             "raw": decoded,
-            "latency_ms": elapsed,
-            "first_token_ms": first_token_ms,
+            "latency_ms": self.last_latency_ms,
+            "first_token_ms": self.last_first_token_ms,
             "tokens_per_second": self.last_tokens_per_second,
             "model_load_ms": self.last_model_load_ms,
             "model": str(result.get("model", self.model_name)),
@@ -250,55 +318,22 @@ class LocalVLMEngine:
             "set found=false and box=null. Do not infer its location from equipment conventions or labels alone. "
             "Do not include confidence, explanations, instructions, or any other keys."
         )
-        body = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "system", "content": "You estimate image regions only. Never invent an unseen object or coordinates."},
-                {"role": "user", "content": prompt, "images": [base64.b64encode(image_bytes).decode("ascii")]},
-            ],
-            "format": "json",
-            "stream": True,
-            "think": False,
-            "keep_alive": "10m",
-            "options": {"temperature": 0, "num_predict": 80, "num_ctx": 2048},
-        }
-        started = time.perf_counter()
-        with self._inference_lock:
-            try:
-                chunks: list[str] = []
-                result: dict[str, Any] = {}
-                first_token_ms: float | None = None
-                with httpx.stream("POST", f"{self.base_url}/api/chat", json=body,
-                                  timeout=httpx.Timeout(180.0, connect=2.0), trust_env=False) as response:
-                    response.raise_for_status()
-                    for line in response.iter_lines():
-                        if not line:
-                            continue
-                        event = json.loads(line)
-                        if event.get("error"):
-                            raise ValueError("Local VLM stream returned an error.")
-                        content_chunk = event.get("message", {}).get("content", "")
-                        if content_chunk:
-                            chunks.append(str(content_chunk))
-                            if first_token_ms is None:
-                                first_token_ms = round((time.perf_counter() - started) * 1000, 3)
-                        if event.get("done"):
-                            result = event
-                content = "".join(chunks) or str(result.get("message", {}).get("content", ""))
-                decoded = json.loads(content)
-            except (httpx.HTTPError, ValueError, json.JSONDecodeError, TypeError) as error:
-                self.state = "SERVICE_UNAVAILABLE" if isinstance(error, httpx.ConnectError) else "ERROR"
-                self.error = f"{type(error).__name__}: Local VLM localization failed."
-                raise ModelUnavailableError("Local VLM localization failed. No remote service was used.") from error
+        result = self._chat(
+            "You estimate image regions only. Never invent an unseen object or coordinates.",
+            prompt, image_bytes, "image/jpeg", 80,
+        )
+        try:
+            decoded = json.loads(result.get("content", ""))
+        except (json.JSONDecodeError, TypeError) as error:
+            self.state = "ERROR"
+            self.error = "Invalid structured output from the local VLM."
+            raise ModelUnavailableError("Local VLM localization returned invalid structured output.") from error
 
-        elapsed = round((time.perf_counter() - started) * 1000, 3)
+        elapsed = result["latency_ms"]
         self.last_latency_ms = elapsed
-        self.last_first_token_ms = first_token_ms
-        eval_count = result.get("eval_count")
-        eval_duration = result.get("eval_duration")
-        self.last_tokens_per_second = round(float(eval_count) / (float(eval_duration) / 1_000_000_000), 3) if eval_count and eval_duration else None
-        load_duration = result.get("load_duration")
-        self.last_model_load_ms = round(float(load_duration) / 1_000_000, 3) if load_duration else 0.0
+        self.last_first_token_ms = result["first_token_ms"]
+        self.last_tokens_per_second = result["tokens_per_second"]
+        self.last_model_load_ms = result["load_ms"]
 
         box = validate_component_location(decoded)
         if box is None:
@@ -308,8 +343,9 @@ class LocalVLMEngine:
     def health(self) -> dict[str, Any]:
         return {
             "stage": "reasoning", "state": self.state, "model": self.model_name if self.state == "READY" else None,
-            "path_configured": True, "file_present": self.state == "READY", "backend": "Ollama · loopback local runtime" if self.state == "READY" else None,
-            "active_providers": ["local_runtime"] if self.state == "READY" else [], "available_providers": [],
+            "path_configured": True, "file_present": self.state == "READY",
+            "backend": ("GenieX loopback API · accelerator unverified" if self.provider == "geniex" else "Ollama · loopback local runtime") if self.state == "READY" else None,
+            "active_providers": [f"{self.provider}_local_runtime"] if self.state == "READY" else [], "available_providers": [],
             "precision": self.precision if self.state == "READY" else None,
             "load_ms": self.load_ms, "last_latency_ms": self.last_latency_ms,
             "first_token_latency_ms": self.last_first_token_ms,

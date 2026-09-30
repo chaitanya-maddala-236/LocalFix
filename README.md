@@ -14,12 +14,13 @@ LocalFix is a focused field-service copilot for the fictional DemoTech ACM-4200 
 - Scanned-PDF OCR when the local OCR engine is installed.
 - A configurable YOLOv8 ONNX detector adapter and decoder; trained ACM-4200 component weights are still required.
 - Local Qwen3-VL multimodal inference through an Ollama server bound to loopback. Generated summaries must cite a retrieved source and pass evidence-overlap and action-language checks; procedures remain manual-gated.
+- An optional GenieX OpenAI-compatible loopback adapter for Qualcomm AI Hub Qwen3-VL bundles on native Windows ARM64. The runtime path is prepared but has not been exercised on the HP target.
 - Manual-grounded rule summaries and source-backed fixed procedure steps. Missing evidence blocks unsupported findings.
 - Local cases, report exports, runtime health, upload limits, and structured logs that omit raw image/audio.
 
 ## What still needs target hardware or assets
 
-This build host is Windows AMD64, not the HP Snapdragon laptop. QNN setup has not been run on Snapdragon. OCR, ASR, embeddings, and the configured Qwen3-VL 2B run locally without a validated NPU backend here.
+This build host is an Intel Windows AMD64 Dell, not the HP Snapdragon laptop. The Qualcomm AI Hub token was used for a read-only authentication/device-profile lookup and was not saved. QNN/GenieX setup has not been run on Snapdragon. OCR, ASR, embeddings, and the configured Qwen3-VL 2B run locally without a validated NPU backend here.
 
 No task-trained component detector weights or OWL-V2 open-vocabulary model are configured. “Show motor relay” can use the local VLM to return a conservative image-region estimate, clearly labeled as a model estimate without a calibrated score; dedicated detector results remain unavailable. A real QNN-vs-CPU comparison must be measured on the target device with the same task model and inputs.
 
@@ -79,7 +80,18 @@ Start the local AI runtime and backend, confirm Runtime shows the expected model
 
 ## Snapdragon deployment
 
-Use native Windows ARM64 Python 3.11 and backend/run-snapdragon.ps1 with LOCALFIX_PYTHON pointing to that interpreter. It checks the QNN Execution Provider and requests HTP for compatible ONNX sessions. The UI reports NPU active only when a loaded model session lists QNN as active; this does not prove every operator ran on NPU.
+For Qualcomm AI Hub multimodal reasoning, install GenieX for Windows ARM64 on the HP. Download the precompiled model once while online, then use LocalFix's GenieX mode:
+
+~~~powershell
+cd D:/LocalFix
+.\backend\setup-geniex-snapdragon.ps1 -PullModel
+$env:LOCALFIX_PYTHON = 'C:/Path/To/NativeArm64Python311/python.exe'
+.\backend\run-snapdragon.ps1 -GenieX
+~~~
+
+The API key is not needed in this local runtime flow. The Workbench token is for cloud model management and optional profiling only; do not put it in the app. LocalFix connects to GenieX through `127.0.0.1`. It marks accelerator placement unverified unless runtime telemetry confirms it.
+
+For ONNX stages, use native Windows ARM64 Python 3.11 and `backend/run-snapdragon.ps1` without `-GenieX`; it checks the QNN Execution Provider and requests HTP for compatible ONNX sessions. QNN provider discovery does not prove every operator ran on the NPU.
 
 See [docs/MODEL_DEPLOYMENT.md](docs/MODEL_DEPLOYMENT.md). This host cannot validate Snapdragon QNN, QAIRT, GenieX, Qualcomm AI Hub assets, target thermals, or power. Ollama CPU inference is a separate fallback and does not establish NPU performance.
 

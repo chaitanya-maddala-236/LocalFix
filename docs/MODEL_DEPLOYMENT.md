@@ -69,7 +69,7 @@ The trained detector adapter covers closed-set YOLOv8 only. A separate `/vision/
 
 ## Snapdragon / QNN
 
-Snapdragon deployment requires native Windows ARM64, a compatible Qualcomm runtime/driver, a matching model export, and task preprocessing/decoding. The build host is AMD64 and has not run this path on the target HP laptop.
+Snapdragon deployment requires native Windows ARM64, a compatible Qualcomm runtime/driver, a matching model export, and task preprocessing/decoding. This workspace runs on an Intel x64 Dell, so the target HP laptop has not been validated from this build host.
 
 Use Python 3.11 ARM64 and the separate backend/requirements-snapdragon-arm64.txt environment:
 
@@ -79,9 +79,38 @@ cd D:/LocalFix/backend
 ./run-snapdragon.ps1
 ~~~
 
-The launcher checks that ONNX Runtime exposes QNNExecutionProvider and requests the HTP backend. Runtime status reports the active session providers. QNN provider presence is not proof that every node executes on NPU; collect the vendor placement/diagnostic output and task timings on the target.
+The launcher checks that ONNX Runtime exposes QNNExecutionProvider and requests the HTP backend. Runtime status reports active session providers. QNN provider presence is not proof that every node executes on NPU; collect the vendor placement/diagnostic output and task timings on the target.
 
-Do not install the AMD64 CPU extras into the ARM64 environment. For ARM64, select Qualcomm AI Hub assets compatible with the exact HP Snapdragon generation and Windows runtime. Integrate them only after checking required auxiliary files, licensing, precision, operator coverage, and task adapter. QAIRT and GenieX need their vendor SDK bindings and separate adapters; their names in the manifest alone do not mean they work.
+Do not install the AMD64 CPU extras into the ARM64 environment. The LocalFix VLM adapter also supports a local GenieX OpenAI-compatible endpoint. This is the recommended multimodal-reasoning path for Qualcomm AI Hub's precompiled Windows ARM64 VLM bundles; it does not send field images, voice, or manuals to Workbench.
+
+### Qualcomm AI Hub + GenieX VLM
+
+The AI Hub Workbench API token is for account management and cloud compile/profile jobs. It is not needed by LocalFix at run time and must not be placed in the repository, model manifest, or a persistent AI Hub profile for this workflow. `backend/qualcomm_aihub_profiles.py` prompts with hidden input and performs a read-only device-profile lookup. A separate Python 3.11+ environment is recommended:
+
+~~~powershell
+cd D:/LocalFix
+py -3.11 -m venv .venv-aihub
+$env:TEMP = 'D:/LocalFix/.tmp-aihub'
+$env:TMP = $env:TEMP
+New-Item -ItemType Directory -Force $env:TEMP | Out-Null
+.\.venv-aihub\Scripts\python.exe -m pip install --no-cache-dir qai-hub
+.\.venv-aihub\Scripts\python.exe backend/qualcomm_aihub_profiles.py
+~~~
+
+The profile lookup authenticates directly with the AI Hub API and prints public target names only. Qualcomm's current model catalog lists Qwen3-VL-4B-Instruct for Snapdragon X Elite, X Plus 8-Core, and X2 Elite reference profiles. Reference-profile support is not proof that an arbitrary HP SKU or runtime package works, and profile metrics are not HP laptop measurements. Confirm the exact laptop chipset and the current AI Hub model's Windows instructions before deployment.
+
+On the Snapdragon laptop, install Qualcomm's GenieX Windows ARM64 CLI using the model page's Quick Start. Download the model once while online into LocalFix's D: model directory, then run the app with its local GenieX server:
+
+~~~powershell
+cd D:/LocalFix
+.\backend\setup-geniex-snapdragon.ps1 -PullModel
+$env:LOCALFIX_PYTHON = 'C:/Path/To/NativeArm64Python311/python.exe'
+.\backend\run-snapdragon.ps1 -GenieX
+~~~
+
+The launcher sets `GENIEX_DATADIR` to `D:/LocalFix/models/geniex`, starts the server on `127.0.0.1:18181` with NPU requested, and configures FastAPI to send multimodal requests to that loopback service. Once the model files are present, GenieX can run without internet. Diagnosis still requires local manual evidence; procedure steps remain generated from fixed, cited manual mappings and pass the existing safety acknowledgement.
+
+LocalFix identifies GenieX as a local provider but reports NPU status as unverified because the GenieX OpenAI-compatible API does not expose provider placement to this app. A successful response is not by itself a measured performance comparison. Run the same task with NPU and CPU configurations on the physical HP laptop and retain the device, runtime, model, precision, provider, and raw task timings with the benchmark result. Do not use Workbench-hosted proxy results as measurements from that laptop.
 
 ## Evidence, safety, and VLM limits
 
@@ -95,6 +124,9 @@ The VLM can summarize retrieved text and describe an image, but it cannot propos
 - [FastEmbed semantic search](https://github.com/qdrant/fastembed/blob/main/README.md)
 - [ONNX Runtime QNN Execution Provider](https://onnxruntime.ai/docs/execution-providers/QNN-ExecutionProvider.html)
 - [Qualcomm AI Hub documentation](https://aihub.qualcomm.com/docs/)
+- [Qualcomm AI Hub Qwen3-VL-4B-Instruct](https://aihub.qualcomm.com/models/qwen3_vl_4b_instruct)
+- [Qualcomm AI Hub GenieX](https://github.com/qualcomm/GenieX)
+- [Qualcomm AI Hub Workbench client configuration](https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.ClientConfig.html)
 - [Ollama vision API](https://docs.ollama.com/capabilities/vision)
 - [Ollama chat API](https://docs.ollama.com/api/chat)
 - [Qwen3-VL 2B/4B model variants and sizes](https://ollama.com/library/qwen3-vl)

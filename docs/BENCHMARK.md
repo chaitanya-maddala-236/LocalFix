@@ -10,7 +10,7 @@ Reports → Runtime runs ten serial repetitions for each requested stage and ret
 | Retrieval | SQLite FTS5, plus BGE embedding similarity and RRF when the local encoder is ready | CPU ready on AMD64 profile |
 | Speech | Ten transcriptions of the selected local audio sample | Requires speech weights and a selected audio file |
 | Vision | Ten YOLOv8 detections on selected local image | Requires a task-ready detector model |
-| Reasoning | Ten local Qwen3-VL image-plus-manual generations | Requires the loopback VLM and a selected local image; reports response latency, first-token latency, and measured token/s |
+| Reasoning | Ten local VLM image-plus-manual generations | Requires the loopback VLM and a selected local image; reports measured response and first-token latency; token/s and model-load time appear only when the runtime supplies those measurements |
 
 Benchmark image/audio files are passed as base64 to the loopback API only and discarded after the request. The API never writes them to its data directory or logs. Do not choose sensitive audio/images on a shared device.
 
@@ -23,7 +23,7 @@ Benchmark image/audio files are passed as base64 to the loopback API only and di
 5. Save the returned JSON and record host power profile, network state, ambient conditions, model file hashes, and application revision alongside it.
 6. Repeat after a process restart to capture cold model-load telemetry; the benchmark request itself records startup model load time separately from a task warmup and the ten task samples.
 
-Measurements are serial; all available stages run task-specific local model operations. VLM first-token time is measured from request start to the first nonempty content token; response latency covers the complete generation, and token throughput uses Ollama's generated-token count and generation duration. The synthetic OCR fixture makes no recognition-quality claim. The benchmark does not calculate ASR word error rate or detector accuracy; those require labeled speech and image sets. The response reports zero external network requests for the local inference task path; explicit setup-time model downloads are outside this benchmark.
+Measurements are serial; all available stages run task-specific local model operations. VLM first-token time is measured from request start to the first nonempty content token; response latency covers the complete generation. Token throughput and model-load time are reported only when supplied by the active runtime. The synthetic OCR fixture makes no recognition-quality claim. The benchmark does not calculate ASR word error rate or detector accuracy; those require labeled speech and image sets. The response reports zero external network requests for the local inference task path; explicit setup-time model downloads are outside this benchmark.
 
 ## Cold and warm timings
 
@@ -35,6 +35,6 @@ Only task-backed outputs are marked performance-claim eligible. Generic ONNX zer
 
 ## Snapdragon comparison still required
 
-This development host is Windows AMD64 and reports NPU unavailable. It cannot produce a Snapdragon measurement. On the HP laptop, configure the same model, quantization, input fixture, precision, and software revision for QNN/HTP and CPU fallback. Run at least ten warm samples after separately recording cold load and warmup. Record QNN operator placement, RAM/UMA, power mode, and thermal state. Do not claim NPU superiority from provider activation alone.
+This development host is Windows AMD64 and reports NPU unavailable. It cannot produce a Snapdragon measurement. On the HP laptop, use identical model, quantization, input fixture, precision, and software revision for GenieX/QAIRT NPU and CPU fallback if that model supports both. If it does not, label results as different-model runs instead of a same-model comparison. Run at least ten warm samples after separately recording cold load and warmup. Record GenieX compute selection, QNN operator placement where available, RAM/UMA, power mode, and thermal state. GenieX's HTTP API does not provide accelerator-placement telemetry to LocalFix, so retain the runtime diagnostics separately and do not claim NPU superiority from model availability or API success alone.
 
 This Windows AMD64 host can measure OCR, speech, hybrid retrieval, and local Qwen3-VL CPU fallback after the model is installed. Vision detection still needs trained component weights. QNN and a same-model NPU/CPU comparison remain target-device work; Ollama measurements do not count as QNN or NPU measurements.

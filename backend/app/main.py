@@ -180,7 +180,9 @@ async def runtime_status() -> dict[str, Any]:
         payload["latencyMs"]["reasoning"] = vlm_engine.last_latency_ms
     payload["precision"]["reasoning"] = vlm_engine.precision
     if vlm_engine.state == "READY" and "QNNExecutionProvider" not in payload["model_details"]["reasoning"]["active_providers"]:
-        payload["backend"] = "Local AI · VLM runtime (accelerator unverified)"
+        payload["backend"] = "GenieX local · accelerator unverified" if vlm_engine.provider == "geniex" else "Local AI · VLM runtime (accelerator unverified)"
+        if vlm_engine.provider == "geniex" and payload["npu"] != "active":
+            payload["npu"] = "unknown"
     payload["retrieval"] = {
         "mode": "hybrid_rrf" if embedding_index.state == "READY" else "sqlite_fts5",
         "semantic": embedding_index.state == "READY",

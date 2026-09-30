@@ -371,7 +371,7 @@ class ModelRegistry:
             "network_detail": "OS interface status; no connectivity probe or external request was made.",
             "models": states, "model_details": details, "latencyMs": self.last_measurements,
             "ramMb": process_ram_mb(),
-            "ramScope": "LocalFix API plus local Ollama/model-runner working sets; shared UMA allocation is not separately exposed.",
+            "ramScope": "LocalFix API plus local inference-runtime working sets; shared UMA allocation is not separately exposed.",
             "precision": precision,
         }
 

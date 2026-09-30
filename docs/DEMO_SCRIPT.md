@@ -6,6 +6,7 @@
 - Start Ollama, the API, and Vite app. Check Runtime lists OCR, Speech, Embedding, and Qwen3-VL 2B Instruct as local; Vision weights stay unavailable.
 - Use the built-in fictional ACM-4200 illustration as the OCR sample. It is synthetic; its label text is intentionally present for the local OCR path.
 - Keep the demo/manual disclaimer visible. No simulated detector or NPU result may be presented as real; a local VLM answer is real model output but must pass evidence checks and is not calibrated.
+- On the Snapdragon HP, follow the GenieX setup in MODEL_DEPLOYMENT.md. The AI Hub API token is for model-management work only; LocalFix and the on-device GenieX server do not need it during the demo.
 
 ## Live CPU path (about 3 minutes)
 
@@ -23,10 +24,10 @@ Switch to Demo Mode only when illustrating the complete fictional user story. Ca
 
 ## Current competition boundary
 
-The live local path proves on-device OCR, speech, local hybrid manual search, Qwen3-VL image-plus-manual inference, evidence checks, procedures, reports, and offline operation on the AMD64 host. It does not yet prove real component localization, multilingual/noisy ASR quality, or Snapdragon NPU execution. Those require detector assets and the target HP laptop.
+The live local path on the AMD64 host proves OCR, speech, local hybrid manual search, Qwen3-VL image-plus-manual inference, evidence checks, procedures, reports, and offline operation. On the Snapdragon HP, repeat the same workflow with the GenieX model and verify the selected accelerator on that device. Real component localization still requires a task-trained detector and held-out equipment photos.
 
 ## Safe phrasing
 
-Say: “OCR, speech, embeddings, and the VLM run locally on this CPU test host. The detector still needs trained component weights. We have not measured the Snapdragon NPU yet.”
+Say only what the live machine reports. The Intel build host is CPU-only. On the HP, GenieX requests Qualcomm AI Engine Direct/NPU, while LocalFix labels placement unverified until device telemetry and repeatable task timings are recorded. The detector still needs trained component weights.
 
 Do not claim a diagnosed failure is a repair instruction. The fictional manual and procedure exist to exercise the product flow only.

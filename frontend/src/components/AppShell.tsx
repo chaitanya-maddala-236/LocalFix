@@ -39,7 +39,7 @@ export function AppShell() {
       <nav className="primary-nav">{links.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><Icon size={17} strokeWidth={1.8}/><span>{label}</span>{to === '/cases' && <span className="nav-count">{demoMode ? '2' : ''}</span>}</NavLink>)}</nav>
       <div className="sidebar-bottom">
         <div className="sidebar-section-label">DEVICE STATUS</div>
-        <div className="device-mini"><div className="device-mini-icon"><Zap size={15}/></div><div className="device-mini-copy"><b>{demoMode ? 'Demo runtime' : runtime.backend}</b><small>{demoMode ? 'SIMULATED' : runtime.npu === 'active' ? 'QNN · NPU' : 'LOCAL · CPU'}</small></div><span className={`status-dot ${runtime.npu === 'active' && !demoMode ? 'good' : ''}`}/></div>
+        <div className="device-mini"><div className="device-mini-icon"><Zap size={15}/></div><div className="device-mini-copy"><b>{demoMode ? 'Demo runtime' : runtime.backend}</b><small>{demoMode ? 'SIMULATED' : runtime.npu === 'active' ? 'QNN · NPU' : runtime.npu === 'unknown' ? 'LOCAL · ACCELERATOR UNVERIFIED' : 'LOCAL · CPU'}</small></div><span className={`status-dot ${runtime.npu === 'active' && !demoMode ? 'good' : ''}`}/></div>
         <div className="sidebar-status-line"><span><WifiOff size={13}/> OFFLINE READY</span><span className="local-dot"/></div>
         <button className="sidebar-help"><CircleHelp size={15}/> Help center <span>↗</span></button>
         <div className="user-row"><div className="user-avatar">JD</div><div className="user-copy"><b>Jordan Davis</b><small>Field technician</small></div><Settings2 size={15}/></div>
