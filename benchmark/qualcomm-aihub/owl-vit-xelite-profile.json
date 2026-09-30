@@ -1,0 +1,30 @@
+{
+  "captured_at_utc": "2026-09-30T09:17:06.521650+00:00",
+  "validation_kind": "ai_hub_npu_vs_cpu_profile_synthetic_inputs",
+  "model": "OWL-ViT",
+  "precision": "w8a16",
+  "model_path": "D:\\LocalFix\\models\\qualcomm\\owl-vit\\owl_vit-onnx-w8a16\\owl_vit.onnx",
+  "target_device": "Snapdragon X Elite CRD",
+  "host_note": "Qualcomm-hosted reference device; not an HP laptop measurement.",
+  "accuracy_note": "Synthetic fixed-shape inputs; no detection-quality claim.",
+  "runs": [
+    {
+      "compute_unit": "npu",
+      "job_id": "jgnzjr7qg",
+      "job_url": "https://workbench.aihub.qualcomm.com/jobs/jgnzjr7qg/",
+      "status": "JobStatus\n---------\ncode    : FAILED\nmessage : Failed to load the ONNX model. Please make sure the input model is correct.\n",
+      "success": false,
+      "profile": {},
+      "output_download_error": "AttributeError"
+    },
+    {
+      "compute_unit": "cpu",
+      "job_id": "j57eqv99p",
+      "job_url": "https://workbench.aihub.qualcomm.com/jobs/j57eqv99p/",
+      "status": "JobStatus\n---------\ncode    : FAILED\nmessage : Failed to load the ONNX model. Please make sure the input model is correct.\n",
+      "success": false,
+      "profile": {},
+      "output_download_error": "AttributeError"
+    }
+  ]
+}

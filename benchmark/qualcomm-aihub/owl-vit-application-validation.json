@@ -1,0 +1,45 @@
+{
+  "captured_at_utc": "2026-09-30",
+  "validation_kind": "qualcomm_ai_hub_model_and_application_validation",
+  "model": {
+    "name": "OWL-ViT",
+    "precision": "w8a16",
+    "input_size": "768x768",
+    "target_device": "Snapdragon X Elite CRD",
+    "public_catalog_profile": {
+      "runtime": "ONNX Runtime",
+      "compute_unit": "NPU",
+      "latency_ms": 21.34,
+      "peak_memory_mb": 174,
+      "source": "https://aihub.qualcomm.com/models/owl_vit"
+    }
+  },
+  "application_fixture": "Synthetic fictional DemoTech ACM-4200 illustration; prompt: a photo of a motor relay",
+  "hosted_application_run": {
+    "status": "blocked_before_job_submission",
+    "reason": "Qualcomm AI Hub Workbench rejected the supplied API token during device lookup.",
+    "job_submitted": false,
+    "result": null,
+    "safety_note": "No token value is stored in this record. The exposed token should be revoked and replaced before another authenticated run."
+  },
+  "raw_onnx_upload_attempts": [
+    {
+      "compute_unit": "NPU",
+      "job_id": "jgnzjr7qg",
+      "status": "failed",
+      "reason": "Workbench reported that it could not load the raw ONNX model. External ONNX weight packaging may be the cause, but this was not confirmed."
+    },
+    {
+      "compute_unit": "CPU",
+      "job_id": "j57eqv99p",
+      "status": "failed",
+      "reason": "Workbench reported that it could not load the raw ONNX model. External ONNX weight packaging may be the cause, but this was not confirmed."
+    }
+  ],
+  "claims": {
+    "qualcomm_public_catalog_reference_only": true,
+    "localfix_application_accuracy_validated": false,
+    "hp_snapdragon_device_validated": false,
+    "npu_vs_cpu_comparison_completed": false
+  }
+}

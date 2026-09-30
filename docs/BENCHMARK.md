@@ -38,3 +38,20 @@ Only task-backed outputs are marked performance-claim eligible. Generic ONNX zer
 This development host is Windows AMD64 and reports NPU unavailable. It cannot produce a Snapdragon measurement. On the HP laptop, use identical model, quantization, input fixture, precision, and software revision for GenieX/QAIRT NPU and CPU fallback if that model supports both. If it does not, label results as different-model runs instead of a same-model comparison. Run at least ten warm samples after separately recording cold load and warmup. Record GenieX compute selection, QNN operator placement where available, RAM/UMA, power mode, and thermal state. GenieX's HTTP API does not provide accelerator-placement telemetry to LocalFix, so retain the runtime diagnostics separately and do not claim NPU superiority from model availability or API success alone.
 
 This Windows AMD64 host can measure OCR, speech, hybrid retrieval, and local Qwen3-VL CPU fallback after the model is installed. Vision detection still needs trained component weights. QNN and a same-model NPU/CPU comparison remain target-device work; Ollama measurements do not count as QNN or NPU measurements.
+
+## Qualcomm AI Hub reference profiles
+
+Snapshot queried from Qualcomm's public AI Hub Model catalog on 2026-09-30 with `qai-hub-models` CLI 0.63.0. These are Qualcomm's measurements on the Snapdragon X Elite CRD reference device, not measurements from this LocalFix instance or an HP laptop.
+
+| Model / workload | Runtime and precision | AI Hub reference result | Relevance |
+| --- | --- | --- | --- |
+| [OWL-ViT](https://aihub.qualcomm.com/models/owl_vit), 768×768 open-vocabulary detection | ONNX Runtime, w8a16 | 21.34 ms, 174 MB peak memory, NPU | Candidate for component localization; no LocalFix image accuracy result yet |
+| [OWL-ViT](https://aihub.qualcomm.com/models/owl_vit) | QAIRT DLC, w8a16 | 23.19 ms, 3 MB peak memory, NPU | Alternate deployable format; memory is the reported model peak, not total application RAM |
+| [Qwen3-VL-4B](https://aihub.qualcomm.com/models/qwen3_vl_4b_instruct) vision encoder | GenieX / QAIRT, w4a16 | 205.90 ms, 7 MB peak memory, NPU | Reference vision-encoder result |
+| [Qwen3-VL-4B](https://aihub.qualcomm.com/models/qwen3_vl_4b_instruct) generation, context length 4096 | GenieX / QAIRT, w4a16 | 20.8 tokens/s; first-token range 99.5–3183.2 ms | Reference generation result; first-token time varies with prompt/input |
+
+The `qai-hub-models numerics owl-vit --device "Snapdragon X Elite CRD"` query returned no matching accuracy record. Do not present the catalog's timing data as measured LocalFix performance or claim relay-detection accuracy from it. An authenticated Workbench job with the LocalFix synthetic ACM-4200 fixture is still needed for an application-specific model run. No field/customer data should be uploaded to Workbench.
+
+Source records: [OWL-ViT Snapdragon X Elite profile](https://aihub.qualcomm.com/jobs/jgolm7xdg), [OWL-ViT catalog entry](https://aihub.qualcomm.com/models/owl_vit), and [Qwen3-VL-4B catalog entry](https://aihub.qualcomm.com/models/qwen3_vl_4b_instruct).
+
+These reference profiles confirm that compatible Snapdragon X Elite model assets and NPU-backed model runs exist in the AI Hub catalog. They do not verify the exact HP SKU, its drivers, LocalFix's end-to-end flow, offline operation, or a same-model CPU comparison. On 2026-09-30, the end-to-end OWL-ViT demo was prepared with a synthetic ACM-4200 image, but Workbench rejected the supplied token during device lookup, before a demo job was submitted. Earlier attempts to upload the raw ONNX file failed with a model-load error; external-weight packaging may be related, but was not confirmed. Both failures are recorded in `benchmark/qualcomm-aihub/owl-vit-application-validation.json` and `benchmark/qualcomm-aihub/owl-vit-xelite-profile.json`. No LocalFix application result or accuracy claim is made. The credential supplied in chat should be revoked and replaced; the demo script prompts with hidden input and keeps the replacement in memory only.
