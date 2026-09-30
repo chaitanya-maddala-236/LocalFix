@@ -128,6 +128,30 @@ def test_live_ocr_reads_local_image_and_scanned_pdf_keeps_source_page(api_client
     assert "E07" in page_result["text"]
 
 
+def test_component_location_labels_geniex_as_the_local_backend(api_client, monkeypatch):
+    from app import main
+
+    class FakeGenieX:
+        provider = "geniex"
+        state = "READY"
+
+        @staticmethod
+        def load():
+            return {"state": "READY"}
+
+        @staticmethod
+        def locate_component(image_bytes: bytes, target: str):
+            assert image_bytes == b"synthetic equipment image"
+            return {"found": True, "target": target, "box": (0.2, 0.3, 0.4, 0.5),
+                    "latency_ms": 123.0, "model": "qualcomm/Qwen3-VL-4B-Instruct"}
+
+    monkeypatch.setattr(main, "vlm_engine", FakeGenieX())
+    image = base64.b64encode(b"synthetic equipment image").decode("ascii")
+    response = api_client.post("/vision/locate", json={"image_base64": image, "target": "motor relay"})
+    assert response.status_code == 200
+    assert response.json()["backend"] == "GenieX · local VLM visual estimate"
+
+
 def test_benchmark_uses_measured_local_tasks_and_marks_missing_stages(api_client):
     result = api_client.post("/benchmark/run", json={"stages": ["ocr", "retrieval", "speech"], "repeats": 10})
     assert result.status_code == 200

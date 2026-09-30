@@ -237,9 +237,10 @@ async def vision_locate(request: LocateRequest) -> LocateResponse:
         raise ModelUnavailableError("Local VLM component localization is unavailable. No location was fabricated.")
     result = await asyncio.to_thread(vlm_engine.locate_component, image_bytes, request.target)
     registry.record_latency("reasoning", result["latency_ms"])
+    provider = "GenieX" if vlm_engine.provider == "geniex" else "Ollama"
     return LocateResponse(
         found=result["found"], target=result["target"], box=result["box"],
-        model=result["model"], backend="Ollama · local VLM visual estimate",
+        model=result["model"], backend=f"{provider} · local VLM visual estimate",
         latency_ms=result["latency_ms"], simulated=False,
     )
 

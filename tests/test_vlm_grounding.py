@@ -65,7 +65,7 @@ def test_geniex_discovers_configured_local_model_and_streams_multimodal_request(
     import json
 
     monkeypatch.setenv("LOCALFIX_VLM_PROVIDER", "geniex")
-    monkeypatch.setenv("LOCALFIX_VLM_MODEL", "Qwen3-VL-4B-Instruct")
+    monkeypatch.setenv("LOCALFIX_VLM_MODEL", "qualcomm/Qwen3-VL-4B-Instruct")
 
     class ModelsResponse:
         def raise_for_status(self) -> None:
@@ -73,7 +73,7 @@ def test_geniex_discovers_configured_local_model_and_streams_multimodal_request(
 
         @staticmethod
         def json() -> dict[str, object]:
-            return {"data": [{"id": "Qwen3-VL-4B-Instruct"}]}
+            return {"data": [{"id": "qualcomm/Qwen3-VL-4B-Instruct:W4A16"}]}
 
     monkeypatch.setattr(httpx, "get", lambda *args, **kwargs: ModelsResponse())
     engine = LocalVLMEngine()
@@ -85,7 +85,7 @@ def test_geniex_discovers_configured_local_model_and_streams_multimodal_request(
         "visual_observation": "A display is visible.",
     })
     events = [
-        "data: " + json.dumps({"model": "Qwen3-VL-4B-Instruct", "choices": [{"delta": {"content": response_payload[:28]}}]}),
+        "data: " + json.dumps({"model": "qualcomm/Qwen3-VL-4B-Instruct:W4A16", "choices": [{"delta": {"content": response_payload[:28]}}]}),
         "data: " + json.dumps({"choices": [{"delta": {"content": response_payload[28:]}}]}),
         "data: " + json.dumps({"choices": [], "usage": {"completion_tokens": 12}}),
         "data: [DONE]",
@@ -121,6 +121,7 @@ def test_geniex_discovers_configured_local_model_and_streams_multimodal_request(
     assert captured["url"] == "http://127.0.0.1:18181/v1/chat/completions"
     request_body = captured["json"]
     user_content = request_body["messages"][1]["content"]
+    assert request_body["model"] == "qualcomm/Qwen3-VL-4B-Instruct"
     assert request_body["enable_think"] is False
     assert user_content[1]["image_url"]["url"] == (
         "data:image/png;base64," + base64.b64encode(image).decode("ascii")

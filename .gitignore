@@ -7,6 +7,7 @@ __pycache__/
 .venv-snapdragon/
 .venv-aihub/
 .tmp-aihub/
+logs/
 data/localfix.sqlite3
 data/localfix.sqlite3-shm
 data/localfix.sqlite3-wal

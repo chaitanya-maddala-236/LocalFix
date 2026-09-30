@@ -6,6 +6,9 @@ import re
 def normalize_ocr_text(text: str) -> str:
     """Normalize spacing and punctuation while keeping uncertain characters intact."""
     normalized = text.upper().replace("\u2010", "-").replace("\u2011", "-").replace("\u2013", "-").replace("\u2014", "-")
+    # Panel OCR commonly confuses the zero in E07/E03-style codes with capital O/Q.
+    # Restrict correction to this equipment fault-code shape; leave other text intact.
+    normalized = re.sub(r"\bE\s*[-:]?\s*[OQ]\s*([0-9])\b", r"E0\1", normalized)
     normalized = re.sub(r"\bE\s*[-:]?\s*(\d{2})\b", r"E\1", normalized)
     normalized = re.sub(r"\bACM\s*[- ]?\s*(\d{4})\b", r"ACM-\1", normalized)
     normalized = re.sub(r"\bSN\s*[- ]?\s*([A-Z0-9-]+)", r"SN-\1", normalized)

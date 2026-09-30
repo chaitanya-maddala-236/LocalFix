@@ -91,6 +91,14 @@ $env:LOCALFIX_PYTHON = 'C:/Path/To/NativeArm64Python311/python.exe'
 
 The API key is not needed in this local runtime flow. The Workbench token is for cloud model management and optional profiling only; do not put it in the app. LocalFix connects to GenieX through `127.0.0.1`. It marks accelerator placement unverified unless runtime telemetry confirms it.
 
+To exercise the real on-device OCR, cited image-plus-text diagnosis, and component-localization paths with one equipment photo, run the verification script from a second terminal:
+
+~~~powershell
+.\backend\verify-snapdragon.ps1 -ImagePath 'D:\LocalFix\benchmark\acm4200-panel.jpg' -RunBenchmark
+~~~
+
+For an offline check, turn Wi-Fi and Ethernet off in Windows and add `-RequireOffline`. The script saves its measurements and device metadata to `benchmark/snapdragon-runs/`; it does not alter network settings and deliberately keeps GenieX NPU placement unverified unless LocalFix receives QNN provider telemetry.
+
 For ONNX stages, use native Windows ARM64 Python 3.11 and `backend/run-snapdragon.ps1` without `-GenieX`; it checks the QNN Execution Provider and requests HTP for compatible ONNX sessions. QNN provider discovery does not prove every operator ran on the NPU.
 
 See [docs/MODEL_DEPLOYMENT.md](docs/MODEL_DEPLOYMENT.md). This host cannot validate Snapdragon QNN, QAIRT, GenieX, Qualcomm AI Hub assets, target thermals, or power. Ollama CPU inference is a separate fallback and does not establish NPU performance.

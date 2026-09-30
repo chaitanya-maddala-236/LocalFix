@@ -2,7 +2,9 @@ import type { RuntimeStatus } from '../types'
 import type { ServiceCase } from '../types'
 
 export async function getRuntime(): Promise<RuntimeStatus> {
-  const response = await fetch('/api/runtime/status', { signal: AbortSignal.timeout(1800) })
+  // Runtime status performs local model/adapter health checks and can cold-load a
+  // CPU model; keep it asynchronous without failing the mode switch too early.
+  const response = await fetch('/api/runtime/status', { signal: AbortSignal.timeout(10_000) })
   if (!response.ok) throw new Error(`Runtime service returned ${response.status}`)
   return response.json() as Promise<RuntimeStatus>
 }
@@ -12,7 +14,7 @@ export async function checkHealth(): Promise<boolean> {
 }
 
 export async function getCases(): Promise<ServiceCase[]> {
-  const response = await fetch('/api/cases', { signal: AbortSignal.timeout(1800) })
+  const response = await fetch('/api/cases', { signal: AbortSignal.timeout(5_000) })
   if (!response.ok) throw new Error(`Cases service returned ${response.status}`)
   const payload = await response.json() as { items: Array<Record<string, unknown>> }
   return payload.items.map(item => ({

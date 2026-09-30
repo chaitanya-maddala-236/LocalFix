@@ -27,4 +27,4 @@ if ($GenieX) {
 } else {
   . (Join-Path $PSScriptRoot 'start-local-vlm.ps1')
 }
-& $python -m uvicorn app.main:app --app-dir $PSScriptRoot --host 127.0.0.1 --port 8000 --reload
+& $python -m uvicorn app.main:app --app-dir $PSScriptRoot --host 127.0.0.1 --port 8000

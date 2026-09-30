@@ -17,6 +17,13 @@ def test_ocr_normalization_preserves_fault_and_asset_tokens():
     assert {item["kind"] for item in values} == {"model", "serial", "fault"}
 
 
+def test_ocr_corrects_common_zero_confusions_in_fault_codes_only():
+    values = classify_ocr_text("FAULT EO7")
+    assert {item["normalized"] for item in values} == {"E07"}
+    assert {item["kind"] for item in values} == {"fault"}
+    assert normalize_ocr_text("LABEL O7") == "LABEL O7"
+
+
 def test_retrieval_ranks_manual_evidence_and_preserves_source_page(api_client):
     results = retrieve("Why is E07 showing motor feedback?", "DemoTech ACM-4200", 5)
     assert results

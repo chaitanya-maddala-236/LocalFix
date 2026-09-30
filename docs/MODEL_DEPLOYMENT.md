@@ -97,7 +97,7 @@ New-Item -ItemType Directory -Force $env:TEMP | Out-Null
 .\.venv-aihub\Scripts\python.exe backend/qualcomm_aihub_profiles.py
 ~~~
 
-The profile lookup authenticates directly with the AI Hub API and prints public target names only. Qualcomm's current model catalog lists Qwen3-VL-4B-Instruct for Snapdragon X Elite, X Plus 8-Core, and X2 Elite reference profiles. Reference-profile support is not proof that an arbitrary HP SKU or runtime package works, and profile metrics are not HP laptop measurements. Confirm the exact laptop chipset and the current AI Hub model's Windows instructions before deployment.
+The profile lookup authenticates directly with the AI Hub API and prints public target names only. Qualcomm's current model catalog lists Qwen3-VL-4B-Instruct for Snapdragon X Elite, X Plus 8-Core, and X2 Elite reference profiles. A Snapdragon X Plus 10-Core issue reports that this AI Hub bundle is not currently available for that chipset; similar marketing names do not imply bundle compatibility. Reference-profile support is not proof that an arbitrary HP SKU or runtime package works, and profile metrics are not HP laptop measurements. Confirm the exact laptop chipset and `geniex model list` before deployment.
 
 On the Snapdragon laptop, install Qualcomm's GenieX Windows ARM64 CLI using the model page's Quick Start. Download the model once while online into LocalFix's D: model directory, then run the app with its local GenieX server:
 
@@ -108,7 +108,15 @@ $env:LOCALFIX_PYTHON = 'C:/Path/To/NativeArm64Python311/python.exe'
 .\backend\run-snapdragon.ps1 -GenieX
 ~~~
 
-The launcher sets `GENIEX_DATADIR` to `D:/LocalFix/models/geniex`, starts the server on `127.0.0.1:18181` with NPU requested, and configures FastAPI to send multimodal requests to that loopback service. Once the model files are present, GenieX can run without internet. Diagnosis still requires local manual evidence; procedure steps remain generated from fixed, cited manual mappings and pass the existing safety acknowledgement.
+If the GenieX installer did not add its CLI to PATH, set `$env:LOCALFIX_GENIEX_EXE` to the full `geniex.exe` path before running setup. After the API starts, capture a non-sensitive photo of the DemoTech panel or the target equipment, then run a live verification from a second PowerShell window:
+
+~~~powershell
+.\backend\verify-snapdragon.ps1 -ImagePath 'D:\LocalFix\benchmark\acm4200-panel.jpg' -RunBenchmark
+~~~
+
+To verify with network adapters disabled, turn Wi-Fi/Ethernet off in Windows and add `-RequireOffline`. The script requires a real local GenieX answer that passes citation checks, exercises OCR and visual localization on the selected image, and saves a JSON record under `benchmark/snapdragon-runs/`. It does not disable networking itself. GenieX's OpenAI API does not report accelerator placement, so the record leaves NPU verification explicitly unverified unless another runtime reports an active QNN provider.
+
+Setup pulls the model as `ai-hub-models/Qwen3-VL-4B-Instruct`. GenieX may advertise the loaded bundle under an API ID such as `qualcomm/Qwen3-VL-4B-Instruct:W4A16`; the launcher discovers that ID and removes the precision suffix before LocalFix sends chat requests. The launcher sets `GENIEX_DATADIR` to `D:/LocalFix/models/geniex`, starts the server on `127.0.0.1:18181` with NPU requested, verifies the expected model is exposed, and configures FastAPI to send multimodal requests to that loopback service. GenieX logs are written under `D:/LocalFix/logs/`. Once the model files are present, GenieX can run without internet. Diagnosis still requires local manual evidence; procedure steps remain generated from fixed, cited manual mappings and pass the existing safety acknowledgement.
 
 LocalFix identifies GenieX as a local provider but reports NPU status as unverified because the GenieX OpenAI-compatible API does not expose provider placement to this app. A successful response is not by itself a measured performance comparison. Run the same task with NPU and CPU configurations on the physical HP laptop and retain the device, runtime, model, precision, provider, and raw task timings with the benchmark result. Do not use Workbench-hosted proxy results as measurements from that laptop.
 
