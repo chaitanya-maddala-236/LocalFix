@@ -69,6 +69,7 @@ All request/response models are Pydantic. Errors use `{ "detail": { "code": "...
 | GET | `/health` | readiness, version, DB status |
 | GET | `/runtime/status` | backend/provider/model states, RAM, network, measured recent timings, demo flag |
 | POST | `/vision/detect` | image upload or local demo reference → detections and provenance |
+| POST | `/vision/locate` | local VLM image-region estimate for a named component; invalid/ambiguous boxes become “not found” |
 | POST | `/vision/ocr` | image upload or demo reference → normalized OCR values and boxes |
 | POST | `/speech/transcribe` | local audio upload → transcript; returns explicit model-unavailable error when absent |
 | POST | `/manuals/ingest` | PDF upload (bounded size/type) → document/page/chunk counts |
@@ -87,14 +88,14 @@ Browser demo mode uses the same interface and data shapes, with a `simulated: tr
 
 ## 5. Database schema
 
-SQLite uses foreign keys and FTS5. Embeddings are optional opaque local blobs; FTS retrieval works without an embedding model.
+SQLite uses foreign keys, page-linked chunks, FTS5, and optional float32 local embedding blobs tagged with their model name. When the local encoder is ready, FTS and cosine-similarity results are combined with weighted reciprocal-rank fusion; FTS-only mode remains available.
 
 ```sql
 documents(document_id TEXT PRIMARY KEY, document_name TEXT, source_hash TEXT,
           equipment_model TEXT, page_count INTEGER, ingested_at TEXT);
 manual_chunks(chunk_id TEXT PRIMARY KEY, document_id TEXT REFERENCES documents,
               page INTEGER NOT NULL, section TEXT, equipment_model TEXT,
-              text TEXT NOT NULL, embedding BLOB, source_hash TEXT);
+              text TEXT NOT NULL, embedding BLOB, embedding_model TEXT, source_hash TEXT);
 manual_chunks_fts USING fts5(chunk_id UNINDEXED, document_id UNINDEXED,
               equipment_model UNINDEXED, section UNINDEXED, text,
               tokenize='unicode61');
@@ -150,12 +151,12 @@ Safety acknowledgement is scoped to the current case/procedure and is never infe
 
 ## 8. Inference pipeline
 
-Image/audio input → explicit demo or local adapter route → runtime/backend selection → detector and OCR / speech → query-context builder → metadata-constrained SQLite FTS5 plus optional local embedding search → source-preserving ranking → optional local VLM reasoning → schema parse → evidence validator (each claim must map to observation or cited source) → procedure classifier → safety gate → UI. Every operation is asynchronous, time-bounded, concurrency-limited, and logs stage/model/backend/latency/outcome without raw image or audio.
+Camera/audio input → explicit demo or actual local adapter route → OCR/detector and local ASR → observed-context query → equipment-filtered FTS5 plus optional FastEmbed similarity → weighted reciprocal-rank fusion → loopback-only Qwen3-VL generation when installed → cited-evidence/source-language validator → fixed source-backed procedure map → safety acknowledgement gate → UI. A separate local VLM image-region estimate supports “Show Me”; the UI labels it as an uncalibrated estimate and drops malformed boxes. VLM output cannot create procedure steps. No raw media is logged or persisted by inference endpoints.
 
 ## 9. Deployment strategy
 
-Development runs Vite and FastAPI as separate local processes. Production packaging can use a loopback-only desktop shell later; it is not needed to demonstrate the MVP. `LocalInferenceEngine` probes ONNX Runtime providers and a QAIRT/QNN adapter hook; QNN is selected only when the runtime and configured model are present and the provider reports it. CPU fallback is explicit in API and UI. No provider means model state is unavailable, not active. Snapdragon model files and licenses are supplied separately by the operator; no model downloads occur silently. Demo mode is independently available with synthetic inputs.
+Development runs Vite and FastAPI as separate local processes. The current AMD64 profile runs RapidOCR PP-OCRv6, faster-whisper tiny.en, BGE-small embeddings, and Qwen3-VL 2B Instruct locally; OCR/ASR/retrieval are CPU-backed and the Ollama VLM accelerator is not reported as QNN. A YOLOv8 task decoder exists but has no detector weights. The build host has not validated QNN on the HP Snapdragon. QNN is selected only when a configured model session reports the provider; CPU fallback is explicit. OWL-V2, QAIRT, and GenieX integrations remain unavailable without model-specific assets and runtime bindings.
 
 ## 10. Benchmark strategy
 
-Only installed local models are benchmarked. Measure cold initialization once, warmup separately, then ten serial and bounded-concurrency runs per stage. Report raw samples and mean/median/p95/min/max, along with provider, model hash, precision, power/network state, warm/cold status, and run timestamp. Track vision, OCR, ASR, retrieval, VLM first-token/throughput when available, and total response latency. RAM comes from OS process/system counters. NPU metrics are emitted only by a provider/driver that exposes them. Demo-mode results are marked `simulated` and excluded from device performance claims. Compare QNN/NPU and CPU on the same model/input; report missing paths as unavailable.
+The benchmark runs ten real serial task operations for available local OCR, ASR (with selected audio), vision (with selected image and configured detector), and retrieval stages. It reports raw samples and mean/median/p95/min/max, with model/provider, adapter load and warmup telemetry, RAM, and network-request count. A deterministic synthetic label supports OCR latency checks only and is not an accuracy claim. Generic zero-tensor ONNX smoke runs remain ineligible for performance claims. The Windows AMD64 build host cannot make Snapdragon NPU-versus-CPU claims; compare equivalent models and inputs on the target only.

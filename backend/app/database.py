@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS manual_pages (
 CREATE TABLE IF NOT EXISTS manual_chunks (
   chunk_id TEXT PRIMARY KEY, document_id TEXT NOT NULL REFERENCES documents(document_id) ON DELETE CASCADE,
   page INTEGER NOT NULL, section TEXT NOT NULL DEFAULT '', equipment_model TEXT,
-  text TEXT NOT NULL, embedding BLOB, source_hash TEXT NOT NULL
+  text TEXT NOT NULL, embedding BLOB, source_hash TEXT NOT NULL, embedding_model TEXT
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS manual_chunks_fts USING fts5(
   chunk_id UNINDEXED, document_id UNINDEXED, equipment_model UNINDEXED,
@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS cases (
   case_id TEXT PRIMARY KEY, equipment_model TEXT NOT NULL, serial_number TEXT,
   fault_code TEXT, diagnosis TEXT, status TEXT NOT NULL, technician TEXT NOT NULL,
   notes TEXT NOT NULL DEFAULT '', resolution TEXT, created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL, simulated INTEGER NOT NULL DEFAULT 0
+  updated_at TEXT NOT NULL, simulated INTEGER NOT NULL DEFAULT 0,
+  observations TEXT NOT NULL DEFAULT '[]'
 );
 CREATE TABLE IF NOT EXISTS case_evidence (
   case_id TEXT NOT NULL REFERENCES cases(case_id) ON DELETE CASCADE,
@@ -79,6 +80,12 @@ def connect() -> Iterator[sqlite3.Connection]:
 def initialize_database() -> None:
     with connect() as connection:
         connection.executescript(SCHEMA)
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(manual_chunks)")}
+        if "embedding_model" not in columns:
+            connection.execute("ALTER TABLE manual_chunks ADD COLUMN embedding_model TEXT")
+        case_columns = {row["name"] for row in connection.execute("PRAGMA table_info(cases)")}
+        if "observations" not in case_columns:
+            connection.execute("ALTER TABLE cases ADD COLUMN observations TEXT NOT NULL DEFAULT '[]'")
     seed_demo_manual()
 
 
@@ -145,7 +152,9 @@ def _chunk_text(text: str, limit: int = 900, overlap: int = 120) -> list[str]:
 
 def _insert_chunk(connection: sqlite3.Connection, chunk_id: str, document_id: str, page: int,
                   section: str, equipment_model: str | None, text: str, source_hash: str) -> None:
-    connection.execute("INSERT OR REPLACE INTO manual_chunks VALUES (?,?,?,?,?,?,?,?)",
+    connection.execute("INSERT OR REPLACE INTO manual_chunks "
+                       "(chunk_id,document_id,page,section,equipment_model,text,embedding,source_hash,embedding_model) "
+                       "VALUES (?,?,?,?,?,?,?,?,NULL)",
                        (chunk_id, document_id, page, section, equipment_model, text, None, source_hash))
     connection.execute("INSERT INTO manual_chunks_fts VALUES (?,?,?,?,?)",
                        (chunk_id, document_id, equipment_model or "", section, text))
@@ -171,4 +180,3 @@ def insert_manual_document(document_id: str, document_name: str, source_hash: st
                 _insert_chunk(connection, chunk_id, document_id, page_number, section, equipment_model, chunk, source_hash)
                 chunks_count += 1
     return indexed_pages, chunks_count
-

@@ -193,7 +193,42 @@ class OnnxRuntimeAdapter(ModelAdapter):
 
 
 class VisionModel(OnnxRuntimeAdapter):
-    pass
+    async def detect_image(self, image_bytes: bytes) -> list[dict[str, Any]]:
+        if self.state != "READY" or self.session is None:
+            raise ModelUnavailableError(f"vision model is {self.state.lower()}")
+        if self.config.get("task") != "yolov8_onnx":
+            raise ModelInputError("Configure a YOLOv8 ONNX detector task and its matching label list before running image detection.")
+        started = time.perf_counter()
+        result = await asyncio.to_thread(self._detect_image_sync, image_bytes)
+        self.last_latency_ms = (time.perf_counter() - started) * 1000
+        return result
+
+    def _detect_image_sync(self, image_bytes: bytes) -> list[dict[str, Any]]:
+        from ..services.detector import decode_yolov8, preprocess_yolov8
+
+        if self.session is None:
+            raise ModelUnavailableError("Vision model is not loaded")
+        image_size = self.config.get("input_size", [640, 640])
+        if not isinstance(image_size, list) or len(image_size) != 2:
+            raise ModelInputError("YOLOv8 input_size must be [height, width].")
+        height, width = int(image_size[0]), int(image_size[1])
+        if not (32 <= height <= 2048 and 32 <= width <= 2048):
+            raise ModelInputError("YOLOv8 input dimensions must be between 32 and 2048 pixels.")
+        tensor, original_size, transform = preprocess_yolov8(image_bytes, (height, width))
+        input_meta = self.session.get_inputs()[0]
+        if input_meta.type == "tensor(float16)":
+            tensor = tensor.astype("float16")
+        elif input_meta.type != "tensor(float)":
+            raise ModelInputError(f"YOLOv8 image input must be float32 or float16, got {input_meta.type}.")
+        outputs = self.session.run(None, {input_meta.name: tensor})
+        output = max((value for value in outputs if getattr(value, "ndim", 0) in (2, 3)), key=lambda value: value.size)
+        return decode_yolov8(
+            output, labels=list(self.config.get("labels", [])), original_size=original_size,
+            transform=transform, input_size=(height, width),
+            score_threshold=float(self.config.get("score_threshold", 0.25)),
+            nms_threshold=float(self.config.get("nms_threshold", 0.5)),
+            max_detections=int(self.config.get("max_detections", 50)),
+        )
 
 
 class OCRModel(OnnxRuntimeAdapter):
@@ -271,6 +306,7 @@ class ModelRegistry:
         self.models_dir = self.project_root / "models"
         self.manifest_path = Path(os_env("LOCALFIX_MODEL_MANIFEST", self.models_dir / "manifest.json")).resolve()
         self.config: dict[str, Any] = {}
+        self.local_services: dict[str, Any] = {}
         self.available_providers: list[str] = []
         self.adapters: dict[str, OnnxRuntimeAdapter] = {}
         self.last_measurements: dict[str, float | None] = {"vision": None, "ocr": None, "speech": None, "retrieval": None, "reasoning": None}
@@ -279,11 +315,15 @@ class ModelRegistry:
     def reload_manifest(self) -> None:
         if self.manifest_path.exists():
             try:
-                self.config = json.loads(self.manifest_path.read_text(encoding="utf-8")).get("models", {})
+                manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+                self.config = manifest.get("models", {})
+                self.local_services = manifest.get("local_services", {})
             except (OSError, json.JSONDecodeError):
                 self.config = {}
+                self.local_services = {}
         else:
             self.config = {}
+            self.local_services = {}
         try:
             if importlib.util.find_spec("onnxruntime"):
                 import onnxruntime as ort
@@ -330,7 +370,9 @@ class ModelRegistry:
             "npu": "active" if qnn_active else "unavailable", "network": network_state(),
             "network_detail": "OS interface status; no connectivity probe or external request was made.",
             "models": states, "model_details": details, "latencyMs": self.last_measurements,
-            "ramMb": process_ram_mb(), "precision": precision,
+            "ramMb": process_ram_mb(),
+            "ramScope": "LocalFix API plus local Ollama/model-runner working sets; shared UMA allocation is not separately exposed.",
+            "precision": precision,
         }
 
     def record_latency(self, stage: str, elapsed_ms: float) -> None:
@@ -346,7 +388,17 @@ def process_ram_mb() -> float | None:
     try:
         import psutil
         import os
-        return round(psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024), 1)
+        total_bytes = psutil.Process(os.getpid()).memory_info().rss
+        inference_runtimes = {"ollama", "llama-server", "ollama_llama_server"}
+        for process in psutil.process_iter(["name", "memory_info"]):
+            try:
+                name = (process.info.get("name") or "").casefold().removesuffix(".exe")
+                memory = process.info.get("memory_info")
+                if process.pid != os.getpid() and name in inference_runtimes and memory is not None:
+                    total_bytes += memory.rss
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return round(total_bytes / (1024 * 1024), 1)
     except Exception:
         return None
 

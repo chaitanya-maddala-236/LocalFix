@@ -1,0 +1,8 @@
+-r requirements.txt
+# Optional English CPU models for this Windows AMD64 development host.
+# These wheels do not establish Snapdragon QNN/NPU support.
+rapidocr==3.9.2
+fastembed==0.8.1
+faster-whisper==1.2.1
+# faster-whisper 1.2.1 passes metadata_errors to av.open; PyAV 19 removed it.
+av<19

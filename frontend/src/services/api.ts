@@ -21,6 +21,6 @@ export async function getCases(): Promise<ServiceCase[]> {
     status: item.status === 'Resolved' ? 'Resolved' : 'In progress', technician: String(item.technician ?? 'Local technician'),
     duration: '—', evidenceCount: Array.isArray(item.evidence) ? item.evidence.length : 0,
     timestamp: String(item.updated_at ?? 'Just now'), timestampIso: String(item.updated_at ?? ''), serialNumber: typeof item.serial_number === 'string' ? item.serial_number : null,
-    notes: String(item.notes ?? ''), simulated: Boolean(item.simulated),
+    notes: String(item.notes ?? ''), observations: Array.isArray(item.observations) ? item.observations.map(String) : [], simulated: Boolean(item.simulated),
   }))
 }

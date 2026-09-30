@@ -20,16 +20,16 @@ const titles: Record<string, string> = { '/': 'Overview', '/diagnose': 'Live dia
 
 export function AppShell() {
   const location = useLocation()
-  const { demoMode, setDemoMode, setRuntime, runtime, setCases, setEvidence, setDiagnosis, setSafetyAcknowledged, setComponentShown } = useLocalFix()
+  const { demoMode, setDemoMode, setRuntime, runtime, setCases, setEvidence, setDiagnosis, setSafetyAcknowledged, setComponentShown, setCurrentAsset, setOcrResult, setDetections } = useLocalFix()
   const [switching, setSwitching] = useState(false)
   const [notice, setNotice] = useState('')
   async function toggleMode() {
     if (demoMode) {
       setSwitching(true)
-      try { const next = await getRuntime(); const localCases = await getCases().catch(() => []); setRuntime({ ...next, mode: 'local' }); setCases(localCases); setEvidence([]); setDiagnosis(''); setSafetyAcknowledged(false); setDemoMode(false); setNotice('Connected to the local runtime. Model availability is shown from device telemetry.') }
-      catch { setRuntime({ ...runtime, mode: 'local', simulated: false, backend: 'Backend unavailable', npu: 'unavailable', models: { vision: 'missing', ocr: 'missing', speech: 'missing', reasoning: 'missing' }, latencyMs: {}, ramMb: null }); setCases([]); setEvidence([]); setDemoMode(false); setNotice('Local backend is unavailable. Start backend/run.ps1 to connect; local AI actions will show their actual availability.') }
+      try { const next = await getRuntime(); const localCases = await getCases().catch(() => []); setRuntime({ ...next, mode: 'local' }); setCases(localCases); setEvidence([]); setDiagnosis(''); setCurrentAsset({ model: null, serialNumber: null, faultCode: null }); setOcrResult([]); setDetections([]); setComponentShown(false); setSafetyAcknowledged(false); setDemoMode(false); setNotice('Connected to the local runtime. Model availability is shown from device telemetry.') }
+      catch { setRuntime({ ...runtime, mode: 'local', simulated: false, backend: 'Backend unavailable', npu: 'unavailable', models: { vision: 'missing', ocr: 'missing', speech: 'missing', reasoning: 'missing' }, latencyMs: {}, ramMb: null }); setCases([]); setEvidence([]); setCurrentAsset({ model: null, serialNumber: null, faultCode: null }); setOcrResult([]); setDetections([]); setDemoMode(false); setNotice('Local backend is unavailable. Start backend/run.ps1 to connect; local AI actions will show their actual availability.') }
       finally { setSwitching(false); window.setTimeout(() => setNotice(''), 5200) }
-    } else { setRuntime({ ...demoRuntime, network: navigator.onLine ? 'online' : 'offline' }); setCases(demoCases); setEvidence(demoEvidence); setDiagnosis('Motor control feedback mismatch'); setSafetyAcknowledged(false); setComponentShown(false); setDemoMode(true); setNotice('Demo simulation active. Runtime values are not device measurements.'); window.setTimeout(() => setNotice(''), 4200) }
+    } else { setRuntime({ ...demoRuntime, network: navigator.onLine ? 'online' : 'offline' }); setCases(demoCases); setEvidence(demoEvidence); setDiagnosis('Motor control feedback mismatch'); setCurrentAsset({ model: 'DemoTech ACM-4200', serialNumber: 'SN-823919', faultCode: 'E07' }); setOcrResult([]); setDetections([]); setSafetyAcknowledged(false); setComponentShown(false); setDemoMode(true); setNotice('Demo simulation active. Runtime values are not device measurements.'); window.setTimeout(() => setNotice(''), 4200) }
   }
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Main navigation">

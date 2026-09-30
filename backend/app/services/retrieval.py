@@ -102,7 +102,7 @@ def get_page(document_id: str, page: int) -> dict[str, Any] | None:
 def list_manuals() -> list[dict[str, Any]]:
     with connect() as connection:
         rows = connection.execute(
-            "SELECT document_id,document_name,equipment_model,page_count,ingested_at FROM documents ORDER BY document_name"
+            "SELECT document_id,document_name,equipment_model,page_count,ingested_at AS indexed_at FROM documents ORDER BY document_name"
         ).fetchall()
     return [dict(row) for row in rows]
 

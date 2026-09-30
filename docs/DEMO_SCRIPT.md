@@ -1,17 +1,32 @@
 # LocalFix competition demo script
 
-**Length:** 3–4 minutes. Start the Vite frontend in Demo Mode. The synthetic camera, sample voice transcript, and sample timings must stay visibly labeled as simulated. Keep the fictional manual disclaimer available. Do not present these as hardware measurements or real repairs.
+## Preparation
 
-1. **Frame the problem — Operations Home.** Point to the ACM-4200 field asset card and the local-only/runtime panel. Explain that the demo equipment and manual are fictional and that the product workflow is local-first.
-2. **Inspect — Live Diagnose.** Open Live Diagnose. Show the synthetic cabinet artwork, model label, and E07 overlay. Call out “DEMO · SIMULATED.” Choose Scan; explain that the moving scan is a workflow simulation, not detector inference.
-3. **Ask by voice.** Use the voice control. The sample transcript appears as “SIMULATED VOICE”; no microphone audio is captured. Ask “Why is this machine showing E07?” The simulated answer connects E07 to the manual's motor feedback description.
-4. **Show evidence.** Open View Evidence. Point to retrieved pages 84, 102, and 37, source sections, relevance score, and source chain. Clarify the score is retrieval relevance, not probability.
-5. **Locate a component.** Return to diagnosis and select Show Me from the procedure/diagnosis flow. Relay K2 receives a highlighted demo box marked “DEMO LOCALIZATION.” Explain the future live path requires an installed open-vocabulary detector.
-6. **Start the procedure.** Open Procedure. Stop at the safety gate. Read the confirmation: only the technician can confirm site-approved isolation; LocalFix cannot verify it. Click explicit acknowledgement and complete the visual-check steps.
-7. **Record the work.** Add a factual note and save the case. Open Cases to show the case/evidence timeline, then Reports. Generate the demo PDF and show its simulation label.
-8. **Demonstrate offline operation.** Turn Wi-Fi off. Keep the local frontend/API processes running. Ask the same question again in Demo Mode. The complete simulated flow remains available without internet; demo status remains visible.
-9. **Close honestly.** Open Runtime. Show blank demo latency fields and unavailable model states. Explain what changes when licensed local weights, preprocessors, output decoders, and a confirmed QNN/QAIRT session are installed.
+- On this AMD64 development machine, run backend/setup-local-ai.ps1 while online to install local OCR, English ASR, and semantic retrieval assets.
+- Start Ollama, the API, and Vite app. Check Runtime lists OCR, Speech, Embedding, and Qwen3-VL 2B Instruct as local; Vision weights stay unavailable.
+- Use the built-in fictional ACM-4200 illustration as the OCR sample. It is synthetic; its label text is intentionally present for the local OCR path.
+- Keep the demo/manual disclaimer visible. No simulated detector or NPU result may be presented as real; a local VLM answer is real model output but must pass evidence checks and is not calibrated.
 
-## Live-device extension
+## Live CPU path (about 3 minutes)
 
-To claim a real Snapdragon NPU result, install an authorized model/runtime, finish its modality-specific adapter, verify `QNNExecutionProvider` in `/runtime/status`, and run a comparable task benchmark. Do not substitute this scripted demo for that measurement.
+1. Open Local Runtime → Diagnose. The default camera-stage artwork is labeled as a synthetic demo feed.
+2. Click Scan. The frontend rasterizes the locally bundled illustration, passes it to the installed local OCR engine through the loopback API, and overlays OCR boxes. Read out the actual model/fault/serial values returned. If a value is wrong or missing, show that result honestly; do not substitute demo text.
+3. Ask by typing: “Why is this machine showing E07?” If the microphone and local ASR model are available, record the question and review the local English transcript before asking.
+4. Show that SQLite FTS5 plus local BGE embeddings retrieves the ACM-4200 service-manual passage and retains its page number. Open Evidence to inspect the source text.
+5. Open the candidate procedure. Pause at the safety gate and explain that only the technician can acknowledge the site-approved safe state. Complete a case and generate the local report.
+6. Open Reports → Runtime. Run the 10-sample OCR/retrieval benchmark. Select an audio fixture to measure speech and a local image to measure VLM response, first-token latency, and throughput. Vision detector remains unavailable without trained weights.
+7. Turn Wi-Fi off while leaving the local API and frontend running. Scan, ask the same question, open the manual, and generate the report again. OCR, ASR, and retrieval use local assets.
+
+## Demo simulation (optional visual narrative)
+
+Switch to Demo Mode only when illustrating the complete fictional user story. Camera boxes, voice phrase, relay localization, response text, and measurements in Demo Mode are simulated. The labels are visible in the interface. Use it to narrate the future “Show Me” experience, not as evidence of model accuracy or hardware performance.
+
+## Current competition boundary
+
+The live local path proves on-device OCR, speech, local hybrid manual search, Qwen3-VL image-plus-manual inference, evidence checks, procedures, reports, and offline operation on the AMD64 host. It does not yet prove real component localization, multilingual/noisy ASR quality, or Snapdragon NPU execution. Those require detector assets and the target HP laptop.
+
+## Safe phrasing
+
+Say: “OCR, speech, embeddings, and the VLM run locally on this CPU test host. The detector still needs trained component weights. We have not measured the Snapdragon NPU yet.”
+
+Do not claim a diagnosed failure is a repair instruction. The fictional manual and procedure exist to exercise the product flow only.

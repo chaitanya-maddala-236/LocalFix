@@ -1,23 +1,40 @@
-# Benchmark protocol
+# LocalFix benchmark protocol
 
-## What is measured
+## What the API measures
 
-- SQLite FTS5 retrieval latency on the local ACM-4200 manual.
-- Model adapter session cold-load time and one warm-up observation.
-- Ten or more repeat inference timings for an installed ONNX model's synthetic zero-tensor smoke input.
-- API process resident memory, current OS network-interface state, and provider list where available.
-- A future task benchmark may add vision, OCR, ASR, VLM first-token and token-throughput only when proper local fixtures, preprocessors, decoders, and actual model assets are present.
+Reports → Runtime runs ten serial repetitions for each requested stage and returns raw samples, mean, median, p95, min, max, load time, warmup time, model, provider, benchmark kind, and whether the result is eligible for latency claims.
 
-## How to run
+| Stage | Workload | Current availability |
+| --- | --- | --- |
+| OCR | Real local RapidOCR on selected image, or deterministic generated ACM-4200 label | CPU ready on AMD64 profile; generated label is for latency only, not accuracy |
+| Retrieval | SQLite FTS5, plus BGE embedding similarity and RRF when the local encoder is ready | CPU ready on AMD64 profile |
+| Speech | Ten transcriptions of the selected local audio sample | Requires speech weights and a selected audio file |
+| Vision | Ten YOLOv8 detections on selected local image | Requires a task-ready detector model |
+| Reasoning | Ten local Qwen3-VL image-plus-manual generations | Requires the loopback VLM and a selected local image; reports response latency, first-token latency, and measured token/s |
 
-Open Reports & Runtime → AI Runtime → **Run benchmark**, or call `POST /benchmark/run` with `{"repeats":10,"stages":["vision","ocr","speech","retrieval","reasoning"]}`. The API accepts 10–100 repeats and returns raw samples, mean, median, p95, min, max, provider, model, benchmark kind, cold-start and warm-up values, RAM, and external request count.
+Benchmark image/audio files are passed as base64 to the loopback API only and discarded after the request. The API never writes them to its data directory or logs. Do not choose sensitive audio/images on a shared device.
 
-Retrieval samples execute local SQLite queries. ONNX smoke measurements execute real model sessions using model-shaped zero tensors, so they are useful for adapter health only. They are marked `performance_claim_eligible: false`; they do not represent natural image/audio/text inference, user-perceived latency, accuracy, or Snapdragon superiority. Missing models return unavailable entries, not zeros.
+## Run a repeatable local benchmark
 
-## Fair NPU versus CPU comparison
+1. Switch from Demo Mode to Local Runtime.
+2. Open Reports → Runtime.
+3. Optionally select a representative, non-sensitive image and/or audio recording using the local fixture controls.
+4. Click Run benchmark. OCR will use a deterministic synthetic label when no image is selected; vision and VLM are reported unavailable until an image is selected; speech needs a local audio file.
+5. Save the returned JSON and record host power profile, network state, ambient conditions, model file hashes, and application revision alongside it.
+6. Repeat after a process restart to capture cold model-load telemetry; the benchmark request itself records startup model load time separately from a task warmup and the ten task samples.
 
-Use the same model hash, precision, graph, fixtures, repeat count, power mode, and warm-up policy on the same device. Verify active provider from the ONNX session, not from manifest preference. Run NPU and CPU separately; preserve each raw result. Report thermal/power mode and memory alongside latency. The comparison table remains “not measured” until both paths have comparable task inputs. Cloud is not implemented and must not be presented as a measured baseline.
+Measurements are serial; all available stages run task-specific local model operations. VLM first-token time is measured from request start to the first nonempty content token; response latency covers the complete generation, and token throughput uses Ollama's generated-token count and generation duration. The synthetic OCR fixture makes no recognition-quality claim. The benchmark does not calculate ASR word error rate or detector accuracy; those require labeled speech and image sets. The response reports zero external network requests for the local inference task path; explicit setup-time model downloads are outside this benchmark.
 
-## Current limitations
+## Cold and warm timings
 
-No candidate model weights are bundled. No full task-level image, OCR, speech, VLM, or end-to-end measurements exist at this stage. No NPU metric is emitted unless the runtime provider exposes one. Demo mode never injects benchmark data. The API reports zero external network requests because it contains no cloud inference path; localhost API traffic remains local loopback traffic.
+Model load time is captured by each local adapter during startup or reload. The benchmark performs one warmup task on the same fixture, then ten measured tasks. The VLM's reported cold-load duration comes from the inference runtime; if the model was already resident, this can be zero. CPU-stage samples include the model task operation; image-to-base64 encoding and browser capture are not included. Vision samples include decode/preprocess/model/decode inside the adapter. Retrieval samples include the backend hybrid query and SQLite/vector scan. Report cold load and warm task data separately.
+
+## Interpreting result eligibility
+
+Only task-backed outputs are marked performance-claim eligible. Generic ONNX zero-tensor smoke benchmarks remain ineligible. OCR synthetic-fixture numbers are only label-fixture latency, and they do not show accuracy on a real panel. Retrieval measurements are database/model-search latency, not diagnosis quality. Missing stages are returned as unavailable with no fabricated timing.
+
+## Snapdragon comparison still required
+
+This development host is Windows AMD64 and reports NPU unavailable. It cannot produce a Snapdragon measurement. On the HP laptop, configure the same model, quantization, input fixture, precision, and software revision for QNN/HTP and CPU fallback. Run at least ten warm samples after separately recording cold load and warmup. Record QNN operator placement, RAM/UMA, power mode, and thermal state. Do not claim NPU superiority from provider activation alone.
+
+This Windows AMD64 host can measure OCR, speech, hybrid retrieval, and local Qwen3-VL CPU fallback after the model is installed. Vision detection still needs trained component weights. QNN and a same-model NPU/CPU comparison remain target-device work; Ollama measurements do not count as QNN or NPU measurements.

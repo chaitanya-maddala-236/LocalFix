@@ -21,7 +21,9 @@ class RuntimeStatus(BaseModel):
     model_details: dict[str, dict[str, Any]]
     latencyMs: dict[str, float | None]
     ramMb: float | None
+    ramScope: str = "LocalFix API and local model runtime working sets."
     precision: dict[str, str | None]
+    retrieval: dict[str, Any] = Field(default_factory=dict)
 
 
 class VisionRequest(BaseModel):
@@ -42,6 +44,22 @@ class VisionResponse(BaseModel):
     simulated: bool = False
 
 
+class LocateRequest(BaseModel):
+    image_base64: str = Field(min_length=16, max_length=30_000_000)
+    target: str = Field(min_length=2, max_length=80, pattern=r"^[A-Za-z0-9][A-Za-z0-9 _-]{0,79}$")
+
+
+class LocateResponse(BaseModel):
+    found: bool
+    target: str
+    box: tuple[float, float, float, float] | None = None
+    model: str
+    backend: str
+    latency_ms: float
+    method: Literal["local_vlm_visual_estimate"] = "local_vlm_visual_estimate"
+    simulated: bool = False
+
+
 class OCRRequest(BaseModel):
     image_base64: str | None = Field(default=None, max_length=30_000_000)
 
@@ -51,6 +69,7 @@ class OCRValue(BaseModel):
     normalized: str
     kind: Literal["model", "serial", "fault", "other"]
     box: tuple[float, float, float, float] | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
 
 
 class OCRResponse(BaseModel):
@@ -121,6 +140,8 @@ class DiagnoseRequest(BaseModel):
     equipment_model: str | None = None
     observations: list[str] = Field(default_factory=list, max_length=30)
     evidence_ids: list[str] = Field(default_factory=list, max_length=20)
+    image_base64: str | None = Field(default=None, max_length=28_000_000)
+    image_mime_type: Literal["image/jpeg", "image/png", "image/webp"] = "image/jpeg"
 
 
 class DiagnosisResponse(BaseModel):
@@ -130,6 +151,9 @@ class DiagnosisResponse(BaseModel):
     evidence: list[Evidence]
     unsupported_claims: list[str] = Field(default_factory=list)
     model: str | None = None
+    answer_origin: Literal["rule_summary", "local_vlm_validated"] = "rule_summary"
+    visual_observation: str | None = None
+    evidence_coverage: float | None = None
     simulated: bool = False
 
 
@@ -177,6 +201,7 @@ class CaseCreate(BaseModel):
     technician: str = "Local Technician"
     notes: str = ""
     resolution: str | None = None
+    observations: list[str] = Field(default_factory=list, max_length=50)
     evidence: list[Evidence] = Field(default_factory=list)
     steps: list[CaseStep] = Field(default_factory=list)
     simulated: bool = False
@@ -201,6 +226,9 @@ class ReportRequest(BaseModel):
 class BenchmarkRequest(BaseModel):
     stages: list[str] = Field(default_factory=lambda: ["vision", "ocr", "speech", "retrieval", "reasoning"])
     repeats: int = Field(default=10, ge=10, le=100)
+    image_base64: str | None = None
+    audio_base64: str | None = None
+    audio_content_type: str = "audio/webm"
 
 
 class BenchmarkResult(BaseModel):
@@ -214,6 +242,10 @@ class BenchmarkResult(BaseModel):
     cold_start_ms: float | None = None
     warmup_ms: float | None = None
     performance_claim_eligible: bool = False
+    tokens_per_second: float | None = None
+    first_token_latency_ms: float | None = None
+    first_token_samples_ms: list[float] = Field(default_factory=list)
+    evidence_validated_runs: int | None = None
     error: str | None = None
 
 

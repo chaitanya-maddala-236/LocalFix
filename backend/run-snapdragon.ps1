@@ -20,4 +20,5 @@ if ($LASTEXITCODE -ne 0 -or $providerCheck -ne 'True') {
   throw 'QNNExecutionProvider is not available in this environment. Review the ONNX Runtime QNN setup before starting LocalFix.'
 }
 $env:LOCALFIX_ROOT = $projectRoot
+& (Join-Path $PSScriptRoot 'start-local-vlm.ps1')
 & $python -m uvicorn app.main:app --app-dir $PSScriptRoot --host 127.0.0.1 --port 8000 --reload

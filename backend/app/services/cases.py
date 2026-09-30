@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
@@ -24,6 +25,7 @@ def _case_details(connection: Any, case_row: Any) -> dict[str, Any]:
         "fault_code": case_row["fault_code"], "diagnosis": case_row["diagnosis"], "status": case_row["status"],
         "technician": case_row["technician"], "notes": case_row["notes"], "resolution": case_row["resolution"],
         "created_at": case_row["created_at"], "updated_at": case_row["updated_at"],
+        "observations": json.loads(case_row["observations"] or "[]"),
         "evidence": evidence, "steps": steps, "simulated": bool(case_row["simulated"]),
     }
 
@@ -33,10 +35,11 @@ def create_case(payload: CaseCreate) -> CaseResponse:
     timestamp = now_iso()
     with connect() as connection:
         connection.execute(
-            "INSERT INTO cases (case_id,equipment_model,serial_number,fault_code,diagnosis,status,technician,notes,resolution,created_at,updated_at,simulated) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO cases (case_id,equipment_model,serial_number,fault_code,diagnosis,status,technician,notes,resolution,created_at,updated_at,simulated,observations) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (case_id, payload.equipment_model, payload.serial_number, payload.fault_code, payload.diagnosis,
-             payload.status, payload.technician, payload.notes, payload.resolution, timestamp, timestamp, int(payload.simulated)),
+             payload.status, payload.technician, payload.notes, payload.resolution, timestamp, timestamp,
+             int(payload.simulated), json.dumps(payload.observations, ensure_ascii=False)),
         )
         for item in payload.evidence:
             connection.execute(

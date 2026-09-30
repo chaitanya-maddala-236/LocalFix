@@ -1,11 +1,16 @@
 {
   "schema_version": 1,
   "models": {
-    "vision": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"},
+    "vision": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx", "task": "yolov8_onnx", "input_size": [640, 640], "labels": ["motor_relay", "fuse", "connector", "control_board", "display", "warning_label", "model_label"], "score_threshold": 0.25, "nms_threshold": 0.5},
     "ocr": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"},
     "speech": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"},
     "reasoning": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"},
     "embedding": {"path": null, "precision": null, "providers": ["QNNExecutionProvider", "CPUExecutionProvider"], "adapter": "onnx"}
   },
-  "note": "Add user-supplied, licensed ONNX model paths and precision only after validating model inputs and outputs. No models are bundled or silently downloaded."
+  "local_services": {
+    "speech": {"provider": "faster-whisper", "model_path": "speech/tiny.en", "compute_type": "int8"},
+    "retrieval": {"provider": "fastembed", "model_name": "BAAI/bge-small-en-v1.5"},
+    "reasoning": {"provider": "ollama", "model": "qwen3-vl:2b-instruct-q4_K_M", "url": "http://127.0.0.1:11434"}
+  },
+  "note": "Vision detector model weights remain user supplied and task validated. Optional local services are loopback-only and their model files are explicitly prepared by setup scripts. QNN is active only when ONNX Runtime confirms QNNExecutionProvider."
 }
